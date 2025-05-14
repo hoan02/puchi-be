@@ -1,17 +1,17 @@
 {
-  "name": "puchi-be-e2e",
+  "name": "api-gateway-e2e",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "implicitDependencies": ["puchi-be"],
+  "implicitDependencies": ["api-gateway"],
   "targets": {
     "e2e": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/{e2eProjectRoot}"],
       "options": {
-        "jestConfig": "apps/puchi-be-e2e/jest.config.ts",
+        "jestConfig": "apps/api-gateway-e2e/jest.config.ts",
         "passWithNoTests": true
       },
-      "dependsOn": ["puchi-be:build", "puchi-be:serve"]
+      "dependsOn": ["api-gateway:build", "api-gateway:serve"]
     }
   }
 }
