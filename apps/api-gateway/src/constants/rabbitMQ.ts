@@ -1,1 +1,1 @@
-export const ORDER_SERVICE_RABBITMQ = "rebbitMQ_order_service";
+export const LESSON_SERVICE_RABBITMQ = "rebbitMQ_lesson_service";

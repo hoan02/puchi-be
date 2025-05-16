@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ClientProxy } from '@nestjs/microservices';
-import { ORDER_SERVICE_RABBITMQ } from '../constants';
+import { LESSON_SERVICE_RABBITMQ } from '../constants';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService,
-    @Inject(ORDER_SERVICE_RABBITMQ) private readonly client: ClientProxy
+    @Inject(LESSON_SERVICE_RABBITMQ) private readonly client: ClientProxy
   ) { }
 
   @Get()
@@ -14,12 +14,12 @@ export class AppController {
     return this.appService.getData();
   }
 
-  @Post("order")
-  createOrder(@Body() order: any) {
-    this.client.emit("order_created", order)
+  @Post("lesson")
+  createLesson(@Body() lesson: any) {
+    this.client.emit("lesson-created", lesson)
     return {
-      message: "Order sent to RabbitMQ",
-      order
+      message: "Lesson sent to RabbitMQ",
+      lesson
     }
   }
 }
