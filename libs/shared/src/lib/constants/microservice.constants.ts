@@ -1,0 +1,2 @@
+export const LESSON_SERVICE = 'LESSON_SERVICE';
+export const USER_SERVICE = 'USER_SERVICE';
