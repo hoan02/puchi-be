@@ -10,25 +10,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique // Clerk user ID
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  lessons   Lesson[]
+  progress  UserProgress[]
+
+  @@map("users")
+}
+
 model Lesson {
   id              String   @id @default(cuid())
   title           String
   description     String?
   durationMinutes Int
+  createdBy       String   // Clerk user ID
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Relations
+  creator   User          @relation(fields: [createdBy], references: [clerkId])
+  progress  UserProgress[]
+
   @@map("lessons")
-}
-
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("users")
 }
 
 model UserProgress {
@@ -40,7 +51,7 @@ model UserProgress {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [clerkId])
   lesson Lesson @relation(fields: [lessonId], references: [id])
 
   @@unique([userId, lessonId])
