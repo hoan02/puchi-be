@@ -1,82 +1,84 @@
-# PuchiBe
+# PuchiBe Backend
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+PuchiBe là hệ thống backend sử dụng kiến trúc microservices, được xây dựng với NestJS, Prisma, RabbitMQ và quản lý bằng Nx Monorepo.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.
+## 🚀 Công nghệ sử dụng
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/nest?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+- **Node.js** + **TypeScript**
+- **NestJS** (v11)
+- **Prisma ORM**
+- **RabbitMQ** (message broker)
+- **Nx Monorepo**
+- **Jest** (unit test)
+- **ESLint, Prettier** (code style)
+- **Docker Compose** (chạy RabbitMQ)
 
-## Finish your remote caching setup
+## 🏗️ Kiến trúc tổng quan
 
-[Click here to finish setting up your workspace!](https://cloud.nx.app/connect/y1fXkpCQaC)
+- **API Gateway**: Entry point cho client, nhận request và emit event qua RabbitMQ.
+- **Lesson Service**: Xử lý logic bài học, lưu vào database, phát tán event sang các service khác.
+- **Các service khác**: (progress, audio, notification, vocab) nhận event để xử lý nghiệp vụ riêng.
+- **Shared Library**: Chứa DTO, interface, constants, utils dùng chung.
 
+## 📦 Cấu trúc thư mục
 
-## Run tasks
-
-To run the dev server for your app, use:
-
-```sh
-npx nx serve puchi-be
+```
+apps/
+  api-gateway/         # API Gateway service
+  lesson-service/      # Lesson service
+  ...-e2e/             # E2E test
+libs/
+  database/            # PrismaService, DatabaseModule
+  shared/              # DTO, interface, utils
+prisma/schema.prisma   # Định nghĩa database
 ```
 
-To create a production bundle:
+## 🔄 Sơ đồ luồng hoạt động
 
-```sh
-npx nx build puchi-be
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API-Gateway
+    participant RabbitMQ
+    participant Lesson-Service
+    participant Database
+    participant Other-Services
+
+    Client->>API-Gateway: POST /lesson
+    API-Gateway->>RabbitMQ: emit lesson-created
+    RabbitMQ->>Lesson-Service: lesson-created event
+    Lesson-Service->>Database: Lưu lesson
+    Lesson-Service->>Other-Services: emit các event khác (progress, audio, ...)
+    API-Gateway->>Client: Trả về kết quả (có thể là async)
 ```
 
-To see all available targets to run for a project, run:
+## ⚙️ Hướng dẫn chạy dự án
 
-```sh
-npx nx show project puchi-be
-```
+1. Cài đặt dependencies:
+   ```sh
+   npm install
+   ```
+2. Chạy RabbitMQ bằng Docker:
+   ```sh
+   docker-compose up -d
+   ```
+3. Thiết lập database (PostgreSQL) và cập nhật biến môi trường `DATABASE_URL`.
+4. Chạy migrate Prisma:
+   ```sh
+   npx prisma migrate dev
+   ```
+5. Khởi động các service:
+   ```sh
+   npx nx serve api-gateway
+   npx nx serve lesson-service
+   ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+## 📚 Một số lệnh hữu ích
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- Build: `npx nx build <project>`
+- Test: `npx nx test <project>`
+- Xem project graph: `npx nx graph`
 
-## Add new projects
+## 📞 Liên hệ & đóng góp
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
-
-```sh
-npx nx g @nx/nest:app demo
-```
-
-To generate a new library, use:
-
-```sh
-npx nx g @nx/node:lib mylib
-```
-
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
-
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/nx-api/nest?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- Nếu có thắc mắc hoặc muốn đóng góp, hãy tạo issue hoặc pull request trên Github!

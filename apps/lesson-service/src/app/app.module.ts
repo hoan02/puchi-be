@@ -3,9 +3,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { AUDIO_CLIENT, NOTIFICATION_CLIENT, PROGRESS_CLIENT, VOCAB_CLIENT } from '../constants';
+import { DatabaseModule } from '@puchi-be/database';
 
 @Module({
   imports: [
+    DatabaseModule,
     ClientsModule.register([
       {
         name: PROGRESS_CLIENT,

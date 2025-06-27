@@ -15,6 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@puchi-be/database": ["libs/database/src/index.ts"],
       "@puchi-be/shared": ["libs/shared/src/index.ts"]
     }
   },
