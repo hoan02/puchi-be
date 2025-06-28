@@ -45,6 +45,24 @@ import { DatabaseModule } from '@puchi-be/database';
           queueOptions: { durable: true },
         },
       },
+      {
+        name: 'USER_SERVICE',
+        transport: Transport.RMQ,
+        options: {
+          urls: ['amqp://guest:guest@localhost:5672'],
+          queue: 'user_queue',
+          queueOptions: { durable: true },
+        },
+      },
+      {
+        name: 'PROGRESS_SERVICE',
+        transport: Transport.RMQ,
+        options: {
+          urls: ['amqp://guest:guest@localhost:5672'],
+          queue: 'progress_queue',
+          queueOptions: { durable: true },
+        },
+      },
     ]),
   ],
   controllers: [AppController],

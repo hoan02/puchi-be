@@ -1,20 +1,21 @@
-import { verifyToken } from '@clerk/backend';
+import { User, verifyToken } from '@clerk/backend';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-custom';
 import { Request } from 'express';
-import { UserAuthPayload } from '../interfaces/user-payload.interface';
+import { UsersService } from '../users';
 
 @Injectable()
 export class ClerkStrategy extends PassportStrategy(Strategy, 'clerk') {
   constructor(
+    private readonly usersService: UsersService,
     private readonly configService: ConfigService,
   ) {
     super();
   }
 
-  async validate(req: Request): Promise<UserAuthPayload> {
+  async validate(req: Request): Promise<User> {
     const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
@@ -26,12 +27,9 @@ export class ClerkStrategy extends PassportStrategy(Strategy, 'clerk') {
         secretKey: this.configService.get('CLERK_SECRET_KEY'),
       });
 
-      // Return UserAuthPayload format
-      return {
-        userId: tokenPayload.sub,
-        username: (tokenPayload as any).email || tokenPayload.sub,
-        role: 'user', // Default role, can be enhanced later
-      };
+      const user = await this.usersService.getUser(tokenPayload.sub);
+
+      return user;
     } catch (error) {
       console.error('Token verification error:', error);
       throw new UnauthorizedException('Invalid token');

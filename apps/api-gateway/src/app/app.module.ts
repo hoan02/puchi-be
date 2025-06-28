@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ClientsModule, Transport } from '@nestjs/microservices';
-import { LESSON_SERVICE_RABBITMQ } from '../constants';
 import { AuthModule, ClerkClientProvider, ClerkAuthGuard } from '@puchi-be/shared';
 import { APP_GUARD } from '@nestjs/core';
+import { LessonsModule } from '../lessons/lessons.module';
+import { UsersModule } from '../users/users.module';
+import { ProgressModule } from '../progress/progress.module';
 
 @Module({
   imports: [
@@ -13,19 +14,9 @@ import { APP_GUARD } from '@nestjs/core';
       isGlobal: true,
     }),
     AuthModule,
-    ClientsModule.register([
-      {
-        name: LESSON_SERVICE_RABBITMQ,
-        transport: Transport.RMQ,
-        options: {
-          urls: ['amqp://guest:guest@localhost:5672'],
-          queue: 'lesson_queue',
-          queueOptions: {
-            durable: true,
-          }
-        }
-      }
-    ])
+    LessonsModule,
+    UsersModule,
+    ProgressModule,
   ],
   controllers: [AppController],
   providers: [

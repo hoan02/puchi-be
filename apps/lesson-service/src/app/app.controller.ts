@@ -12,7 +12,8 @@ export class AppController {
   constructor(
     private readonly appService: AppService,
     private readonly prismaService: PrismaService,
-    @Inject(PROGRESS_CLIENT) private readonly progressRMQClient: ClientProxy,
+    @Inject('USER_SERVICE') private readonly userClient: ClientProxy,
+    @Inject('PROGRESS_SERVICE') private readonly progressClient: ClientProxy,
     @Inject(AUDIO_CLIENT) private readonly audioRMQClient: ClientProxy,
     @Inject(NOTIFICATION_CLIENT) private readonly notificationRMQClient: ClientProxy,
     @Inject(VOCAB_CLIENT) private readonly vocabRMQClient: ClientProxy,
@@ -64,12 +65,23 @@ export class AppController {
 
       this.logger.log(`Lesson saved with ID: ${savedLesson.id}`);
 
-      // Emit events to other services with the saved lesson data
+      // Emit events to other services
       await Promise.all([
-        this.progressRMQClient.emit("lesson-process", savedLesson).toPromise(),
-        this.notificationRMQClient.emit("lesson-notification", savedLesson).toPromise(),
-        this.audioRMQClient.emit("lesson-audio", savedLesson).toPromise(),
-        this.vocabRMQClient.emit("lesson-vocab", savedLesson).toPromise(),
+        // Notify progress service to create progress tracking
+        this.progressClient.emit("lesson-available", {
+          lessonId: savedLesson.id,
+          userId: user.id,
+          title: savedLesson.title,
+          durationMinutes: savedLesson.durationMinutes
+        }).toPromise(),
+
+        // Notify user service about new lesson creation
+        this.userClient.emit("user-activity", {
+          userId: user.id,
+          activity: 'lesson_created',
+          lessonId: savedLesson.id,
+          timestamp: new Date().toISOString()
+        }).toPromise(),
       ]);
 
       this.logger.log(`All events emitted successfully for lesson: ${savedLesson.id}`);
@@ -81,12 +93,6 @@ export class AppController {
       };
     } catch (error) {
       this.logger.error(`Error processing lesson creation: ${error.message}`, error.stack);
-      // Emit error event for monitoring
-      await this.notificationRMQClient.emit("lesson-error", {
-        error: error.message,
-        lessonData: data,
-        timestamp: new Date().toISOString(),
-      }).toPromise();
 
       return {
         success: false,
