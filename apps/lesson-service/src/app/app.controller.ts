@@ -1,8 +1,10 @@
 import { Controller, Get, Inject, Logger } from '@nestjs/common';
 import { AppService } from './app.service';
-import { ClientProxy, MessagePattern, Payload } from '@nestjs/microservices';
-import { CreateLessonDto, LessonResponseDto } from '@puchi-be/shared';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { ClientProxy } from '@nestjs/microservices';
+import { CreateLessonDto } from '../dto/lesson.dto';
 import { PrismaService } from '@puchi-be/database';
+import { CLIENT_NAMES, LessonCreatedEvent } from '@puchi-be/shared';
 import { firstValueFrom } from 'rxjs';
 
 @Controller()
@@ -12,11 +14,11 @@ export class AppController {
   constructor(
     private readonly appService: AppService,
     private readonly prismaService: PrismaService,
-    @Inject('USER_SERVICE') private readonly userClient: ClientProxy,
-    @Inject('PROGRESS_SERVICE') private readonly progressClient: ClientProxy,
-    @Inject('MEDIA_SERVICE') private readonly mediaClient: ClientProxy,
-    @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
-    @Inject('VOCABULARY_SERVICE') private readonly vocabularyClient: ClientProxy,
+    @Inject(CLIENT_NAMES.USER_SERVICE) private readonly userClient: ClientProxy,
+    @Inject(CLIENT_NAMES.PROGRESS_SERVICE) private readonly progressClient: ClientProxy,
+    @Inject(CLIENT_NAMES.MEDIA_SERVICE) private readonly mediaClient: ClientProxy,
+    @Inject(CLIENT_NAMES.NOTIFICATION_SERVICE) private readonly notificationClient: ClientProxy,
+    @Inject(CLIENT_NAMES.VOCABULARY_SERVICE) private readonly vocabularyClient: ClientProxy,
   ) { }
 
   @Get()
@@ -25,42 +27,25 @@ export class AppController {
   }
 
   @MessagePattern("lesson-created")
-  async handleLessonCreated(@Payload() data: { lesson: CreateLessonDto; user: { id: string; email: string } }) {
+  async handleLessonCreated(@Payload() eventData: string) {
     try {
-      const { lesson: lessonData, user } = data;
-      this.logger.log(`Processing lesson creation: ${lessonData.title} by user: ${user.id}`);
+      // Deserialize event
+      const event = LessonCreatedEvent.fromString(eventData) as LessonCreatedEvent;
+      this.logger.log(`Processing lesson creation: ${event.title} by user: ${event.createdBy}`);
 
       // Validate lesson data
-      if (!lessonData.title || !lessonData.durationMinutes) {
+      if (!event.title || !event.durationMinutes) {
         throw new Error('Invalid lesson data: title and durationMinutes are required');
-      }
-
-      // Check if user exists, if not create user
-      let dbUser = await this.prismaService.user.findUnique({
-        where: { clerkId: user.id }
-      });
-
-      if (!dbUser) {
-        dbUser = await this.prismaService.user.create({
-          data: {
-            clerkId: user.id,
-            email: user.email,
-          }
-        });
-        this.logger.log(`Created new user: ${dbUser.id}`);
       }
 
       // Save lesson to database
       const savedLesson = await this.prismaService.lesson.create({
         data: {
-          title: lessonData.title,
-          description: lessonData.description,
-          durationMinutes: lessonData.durationMinutes,
-          createdBy: user.id,
+          title: event.title,
+          description: event.description,
+          durationMinutes: event.durationMinutes,
+          createdBy: event.createdBy,
         },
-        include: {
-          creator: true,
-        }
       });
 
       this.logger.log(`Lesson saved with ID: ${savedLesson.id}`);
@@ -70,14 +55,14 @@ export class AppController {
         // Notify progress service to create progress tracking
         firstValueFrom(this.progressClient.emit("lesson-available", {
           lessonId: savedLesson.id,
-          userId: user.id,
+          userId: event.createdBy,
           title: savedLesson.title,
           durationMinutes: savedLesson.durationMinutes
         })),
 
         // Notify user service about new lesson creation
         firstValueFrom(this.userClient.emit("user-activity", {
-          userId: user.id,
+          userId: event.createdBy,
           activity: 'lesson_created',
           lessonId: savedLesson.id,
           timestamp: new Date().toISOString()
@@ -109,9 +94,6 @@ export class AppController {
         take: limit,
         orderBy: {
           createdAt: 'desc',
-        },
-        include: {
-          creator: true,
         },
       });
 
@@ -145,9 +127,6 @@ export class AppController {
 
       const lesson = await this.prismaService.lesson.findUnique({
         where: { id },
-        include: {
-          creator: true,
-        },
       });
 
       if (!lesson) {

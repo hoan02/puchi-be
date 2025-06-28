@@ -50,4 +50,4 @@ export class UpdateLessonDto {
   @Min(1)
   @IsOptional()
   durationMinutes?: number;
-}
+} 

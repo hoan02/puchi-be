@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AppService {
+  getData(): { message: string } {
+    return { message: 'Hello Analytics Service!' };
+  }
+
   async processAnalyticsEvent(data: any) {
     console.log('Processing analytics event:', data);
 

@@ -1,15 +1,19 @@
-import { Controller, Inject } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
-import { ClientProxy, MessagePattern, Payload } from '@nestjs/microservices';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import { KafkaService, KAFKA_TOPICS, KAFKA_EVENT_TYPES } from '@puchi-be/shared';
 
 @Controller()
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    @Inject('KAFKA_SERVICE') private readonly kafkaClient: ClientProxy,
     private readonly kafkaService: KafkaService,
   ) { }
+
+  @Get()
+  getData(): { message: string } {
+    return this.appService.getData();
+  }
 
   @MessagePattern(KAFKA_TOPICS.ANALYTICS_EVENTS)
   async handleAnalyticsEvent(@Payload() data: any) {

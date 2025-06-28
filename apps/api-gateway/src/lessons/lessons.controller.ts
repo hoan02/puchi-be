@@ -2,6 +2,9 @@ import { Body, Controller, Get, Inject, Post, HttpException, HttpStatus, Query, 
 import { ClerkAuthGuard, CurrentUser, UserAuthPayload, Public, CLIENT_NAMES } from '@puchi-be/shared';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
+import { CreateLessonRequestDto, ApiResponseDto, LessonsListResponseDto, LessonResponseDto } from '../dto/lesson.dto';
+import { CreateLessonEvent, GetLessonsEvent, GetLessonByIdEvent, GetUserProgressEvent } from '../events/lesson.events';
+import { LessonCreatedEvent } from '@puchi-be/shared';
 
 @Controller('lessons')
 export class LessonsController {
@@ -13,42 +16,50 @@ export class LessonsController {
 
   @Post()
   @UseGuards(ClerkAuthGuard)
-  async createLesson(@Body() lesson: any, @CurrentUser() user: UserAuthPayload) {
-    this.logger.log(`Creating lesson: ${lesson.title} by user: ${user.id}`);
+  async createLesson(@Body() createLessonDto: CreateLessonRequestDto, @CurrentUser() user: any): Promise<ApiResponseDto<any>> {
+    this.logger.log(`Creating lesson: ${createLessonDto.title} by user: ${user.id}`);
 
     try {
-      await firstValueFrom(this.lessonClient.emit("lesson-created", {
-        lesson,
-        user: { id: user.id, email: user.email }
-      }));
+      const event = new LessonCreatedEvent(
+        'temp-id', // Sẽ được generate bởi lesson service
+        createLessonDto.title,
+        createLessonDto.description,
+        createLessonDto.durationMinutes,
+        user.id,
+      );
 
-      this.logger.log(`Lesson created successfully: ${lesson.title}`);
+      const result = await this.lessonClient.emit('lesson-created', event.toString()).toPromise();
+
+      this.logger.log(`Lesson created successfully: ${createLessonDto.title}`);
 
       return {
-        message: "Lesson request sent to lesson service",
-        lesson,
+        data: { lesson: createLessonDto },
+        message: "Lesson creation initiated",
         timestamp: new Date().toISOString()
       };
     } catch (error) {
       this.logger.error(`Error creating lesson: ${error.message}`, error.stack);
-      throw new HttpException(
-        'Failed to process lesson request',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      return {
+        data: null,
+        message: "Failed to create lesson",
+        timestamp: new Date().toISOString()
+      };
     }
   }
 
   @Get('list')
   @UseGuards(ClerkAuthGuard)
-  async getLessons(@CurrentUser() user: UserAuthPayload) {
+  async getLessons(@CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<LessonsListResponseDto>> {
     this.logger.log(`Getting lessons for user: ${user.id}`);
 
     try {
-      const response = await firstValueFrom(this.lessonClient.send('get-lessons', {
+      const event: GetLessonsEvent = {
         page: 1,
         limit: 10,
         userId: user.id
-      }));
+      };
+
+      const response = await firstValueFrom(this.lessonClient.send('get-lessons', event));
 
       if (!response.success) {
         this.logger.warn(`Failed to get lessons: ${response.error}`);
@@ -75,14 +86,16 @@ export class LessonsController {
 
   @Get(':id')
   @UseGuards(ClerkAuthGuard)
-  async getLessonById(@Param('id') id: string, @CurrentUser() user: UserAuthPayload) {
+  async getLessonById(@Param('id') id: string, @CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<LessonResponseDto>> {
     this.logger.log(`Getting lesson by ID: ${id} for user: ${user.id}`);
 
     try {
-      const response = await firstValueFrom(this.lessonClient.send('get-lesson-by-id', {
+      const event: GetLessonByIdEvent = {
         id,
         userId: user.id
-      }));
+      };
+
+      const response = await firstValueFrom(this.lessonClient.send('get-lesson-by-id', event));
 
       if (!response.success) {
         this.logger.warn(`Lesson not found: ${id}`);
@@ -109,13 +122,15 @@ export class LessonsController {
 
   @Get('my-progress')
   @UseGuards(ClerkAuthGuard)
-  async getMyProgress(@CurrentUser() user: UserAuthPayload) {
+  async getMyProgress(@CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<any>> {
     this.logger.log(`Getting progress for user: ${user.id}`);
 
     try {
-      const response = await firstValueFrom(this.lessonClient.send('get-user-progress', {
+      const event: GetUserProgressEvent = {
         userId: user.id
-      }));
+      };
+
+      const response = await firstValueFrom(this.lessonClient.send('get-user-progress', event));
 
       if (!response.success) {
         this.logger.warn(`Failed to get progress: ${response.error}`);
@@ -142,11 +157,11 @@ export class LessonsController {
 
   @Get('public-list')
   @Public()
-  async getPublicLessons() {
+  async getPublicLessons(): Promise<ApiResponseDto<any>> {
     this.logger.log('Getting public lessons');
 
     return {
-      message: 'Public lessons information',
+      data: { message: 'Public lessons information' },
       timestamp: new Date().toISOString()
     };
   }
