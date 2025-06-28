@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { SharedClientsModule } from '@puchi-be/shared';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AuthModule, ClerkClientProvider, ClerkAuthGuard } from '@puchi-be/shared';
-import { APP_GUARD } from '@nestjs/core';
-import { LessonsModule } from '../lessons/lessons.module';
 import { UsersModule } from '../users/users.module';
+import { LessonsModule } from '../lessons/lessons.module';
 import { ProgressModule } from '../progress/progress.module';
 
 @Module({
@@ -13,19 +12,12 @@ import { ProgressModule } from '../progress/progress.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    AuthModule,
-    LessonsModule,
+    SharedClientsModule,
     UsersModule,
+    LessonsModule,
     ProgressModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    ClerkClientProvider,
-    {
-      provide: APP_GUARD,
-      useClass: ClerkAuthGuard,
-    },
-  ],
+  providers: [AppService],
 })
 export class AppModule { }

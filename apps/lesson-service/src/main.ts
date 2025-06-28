@@ -1,24 +1,44 @@
+/**
+ * This is not a production server yet!
+ * This is only a minimal backend to get started.
+ */
+
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { SERVICE_PORTS, QUEUE_LESSON } from '@puchi-be/shared';
+import { SERVICE_PORTS } from '@puchi-be/shared';
 
 async function bootstrap() {
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule,
-    {
-      transport: Transport.RMQ,
-      options: {
-        urls: ['amqp://guest:guest@localhost:5672'],
-        queue: QUEUE_LESSON,
-        queueOptions: {
-          durable: true,
-        }
-      }
-    }
-  );
-  await app.listen();
-  console.log(`Lesson Service is running on port ${SERVICE_PORTS.LESSON_SERVICE}`);
+  const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Lesson Service');
+
+  const globalPrefix = 'api';
+  app.setGlobalPrefix(globalPrefix);
+
+  // Enable CORS
+  app.enableCors({
+    origin: ['http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
+  });
+
+  // Add logging middleware
+  app.use((req, res, next) => {
+    const start = Date.now();
+    logger.log(`${req.method} ${req.url} - ${req.ip} - User-Agent: ${req.get('User-Agent')}`);
+
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      logger.log(`${req.method} ${req.url} - ${res.statusCode} - ${duration}ms`);
+    });
+
+    next();
+  });
+
+  const port = process.env.PORT || SERVICE_PORTS.LESSON_SERVICE;
+  await app.listen(port);
+  logger.log(`🚀 Lesson Service is running on: http://localhost:${port}/${globalPrefix}`);
 }
 
 bootstrap();

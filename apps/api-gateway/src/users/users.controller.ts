@@ -1,5 +1,5 @@
 import { Controller, Get, Inject, UseGuards, Logger } from '@nestjs/common';
-import { ClerkAuthGuard, CurrentUser, UserAuthPayload, Public } from '@puchi-be/shared';
+import { ClerkAuthGuard, CurrentUser, UserAuthPayload, Public, CLIENT_NAMES } from '@puchi-be/shared';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 
@@ -8,7 +8,7 @@ export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
   constructor(
-    @Inject('USER_SERVICE') private readonly userClient: ClientProxy
+    @Inject(CLIENT_NAMES.USER_SERVICE) private readonly userClient: ClientProxy
   ) { }
 
   @Get('profile')

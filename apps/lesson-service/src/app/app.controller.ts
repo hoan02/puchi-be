@@ -1,7 +1,6 @@
 import { Controller, Get, Inject, Logger } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ClientProxy, MessagePattern, Payload } from '@nestjs/microservices';
-import { AUDIO_CLIENT, NOTIFICATION_CLIENT, PROGRESS_CLIENT, VOCAB_CLIENT } from '../constants';
 import { CreateLessonDto, LessonResponseDto } from '@puchi-be/shared';
 import { PrismaService } from '@puchi-be/database';
 import { firstValueFrom } from 'rxjs';
@@ -15,13 +14,13 @@ export class AppController {
     private readonly prismaService: PrismaService,
     @Inject('USER_SERVICE') private readonly userClient: ClientProxy,
     @Inject('PROGRESS_SERVICE') private readonly progressClient: ClientProxy,
-    @Inject(AUDIO_CLIENT) private readonly audioRMQClient: ClientProxy,
-    @Inject(NOTIFICATION_CLIENT) private readonly notificationRMQClient: ClientProxy,
-    @Inject(VOCAB_CLIENT) private readonly vocabRMQClient: ClientProxy,
+    @Inject('MEDIA_SERVICE') private readonly mediaClient: ClientProxy,
+    @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
+    @Inject('VOCABULARY_SERVICE') private readonly vocabularyClient: ClientProxy,
   ) { }
 
   @Get()
-  getData() {
+  getData(): { message: string } {
     return this.appService.getData();
   }
 
@@ -85,16 +84,13 @@ export class AppController {
         })),
       ]);
 
-      this.logger.log(`All events emitted successfully for lesson: ${savedLesson.id}`);
-
       return {
         success: true,
-        lesson: savedLesson,
+        data: savedLesson,
         message: 'Lesson created successfully'
       };
     } catch (error) {
-      this.logger.error(`Error processing lesson creation: ${error.message}`, error.stack);
-
+      this.logger.error(`Error creating lesson: ${error.message}`, error.stack);
       return {
         success: false,
         error: error.message
@@ -109,24 +105,17 @@ export class AppController {
       const skip = (page - 1) * limit;
 
       const lessons = await this.prismaService.lesson.findMany({
-        where: {
-          createdBy: user.id,
-        },
-        include: {
-          creator: true,
-        },
         skip,
         take: limit,
         orderBy: {
           createdAt: 'desc',
         },
-      });
-
-      const total = await this.prismaService.lesson.count({
-        where: {
-          createdBy: user.id,
+        include: {
+          creator: true,
         },
       });
+
+      const total = await this.prismaService.lesson.count();
 
       return {
         success: true,
@@ -136,9 +125,9 @@ export class AppController {
             page,
             limit,
             total,
-            totalPages: Math.ceil(total / limit),
+            pages: Math.ceil(total / limit),
           },
-        }
+        },
       };
     } catch (error) {
       this.logger.error(`Error fetching lessons: ${error.message}`, error.stack);
@@ -154,11 +143,8 @@ export class AppController {
     try {
       const { id, user } = data;
 
-      const lesson = await this.prismaService.lesson.findFirst({
-        where: {
-          id,
-          createdBy: user.id,
-        },
+      const lesson = await this.prismaService.lesson.findUnique({
+        where: { id },
         include: {
           creator: true,
         },
@@ -176,7 +162,7 @@ export class AppController {
         data: lesson
       };
     } catch (error) {
-      this.logger.error(`Error fetching lesson by ID: ${error.message}`, error.stack);
+      this.logger.error(`Error fetching lesson: ${error.message}`, error.stack);
       return {
         success: false,
         error: error.message

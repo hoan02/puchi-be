@@ -1,105 +1,108 @@
-// ClientsModule Configuration
-export const CLIENTS_CONFIG = {
-  // RabbitMQ Configuration
-  RABBITMQ: {
-    name: 'RABBITMQ_CLIENT',
-    transport: 'amqp',
-    options: {
-      urls: ['amqp://guest:guest@localhost:5672'],
-      queue: 'main_queue',
-      queueOptions: {
-        durable: true,
-      },
-    },
-  },
-
+// Kafka Configuration
+export const KAFKA_CLIENTS_CONFIG = {
   // Service Clients Configuration
   SERVICES: {
     USER_SERVICE: {
       name: 'USER_SERVICE_CLIENT',
-      transport: 'amqp',
+      transport: 'kafka',
       options: {
-        urls: ['amqp://guest:guest@localhost:5672'],
-        queue: 'user_queue',
-        queueOptions: {
-          durable: true,
+        client: {
+          brokers: ['localhost:9092'],
+          clientId: 'user-service-client',
+        },
+        consumer: {
+          groupId: 'user-service-group',
         },
       },
     },
     LESSON_SERVICE: {
       name: 'LESSON_SERVICE_CLIENT',
-      transport: 'amqp',
+      transport: 'kafka',
       options: {
-        urls: ['amqp://guest:guest@localhost:5672'],
-        queue: 'lesson_queue',
-        queueOptions: {
-          durable: true,
+        client: {
+          brokers: ['localhost:9092'],
+          clientId: 'lesson-service-client',
+        },
+        consumer: {
+          groupId: 'lesson-service-group',
         },
       },
     },
     PROGRESS_SERVICE: {
       name: 'PROGRESS_SERVICE_CLIENT',
-      transport: 'amqp',
+      transport: 'kafka',
       options: {
-        urls: ['amqp://guest:guest@localhost:5672'],
-        queue: 'progress_queue',
-        queueOptions: {
-          durable: true,
+        client: {
+          brokers: ['localhost:9092'],
+          clientId: 'progress-service-client',
+        },
+        consumer: {
+          groupId: 'progress-service-group',
         },
       },
     },
     MEDIA_SERVICE: {
       name: 'MEDIA_SERVICE_CLIENT',
-      transport: 'amqp',
+      transport: 'kafka',
       options: {
-        urls: ['amqp://guest:guest@localhost:5672'],
-        queue: 'media_queue',
-        queueOptions: {
-          durable: true,
+        client: {
+          brokers: ['localhost:9092'],
+          clientId: 'media-service-client',
+        },
+        consumer: {
+          groupId: 'media-service-group',
         },
       },
     },
     NOTIFICATION_SERVICE: {
       name: 'NOTIFICATION_SERVICE_CLIENT',
-      transport: 'amqp',
+      transport: 'kafka',
       options: {
-        urls: ['amqp://guest:guest@localhost:5672'],
-        queue: 'notification_queue',
-        queueOptions: {
-          durable: true,
+        client: {
+          brokers: ['localhost:9092'],
+          clientId: 'notification-service-client',
+        },
+        consumer: {
+          groupId: 'notification-service-group',
         },
       },
     },
     VOCABULARY_SERVICE: {
       name: 'VOCABULARY_SERVICE_CLIENT',
-      transport: 'amqp',
+      transport: 'kafka',
       options: {
-        urls: ['amqp://guest:guest@localhost:5672'],
-        queue: 'vocabulary_queue',
-        queueOptions: {
-          durable: true,
+        client: {
+          brokers: ['localhost:9092'],
+          clientId: 'vocabulary-service-client',
+        },
+        consumer: {
+          groupId: 'vocabulary-service-group',
         },
       },
     },
     QUIZ_SERVICE: {
       name: 'QUIZ_SERVICE_CLIENT',
-      transport: 'amqp',
+      transport: 'kafka',
       options: {
-        urls: ['amqp://guest:guest@localhost:5672'],
-        queue: 'quiz_queue',
-        queueOptions: {
-          durable: true,
+        client: {
+          brokers: ['localhost:9092'],
+          clientId: 'quiz-service-client',
+        },
+        consumer: {
+          groupId: 'quiz-service-group',
         },
       },
     },
     ANALYTICS_SERVICE: {
       name: 'ANALYTICS_SERVICE_CLIENT',
-      transport: 'amqp',
+      transport: 'kafka',
       options: {
-        urls: ['amqp://guest:guest@localhost:5672'],
-        queue: 'analytics_queue',
-        queueOptions: {
-          durable: true,
+        client: {
+          brokers: ['localhost:9092'],
+          clientId: 'analytics-service-client',
+        },
+        consumer: {
+          groupId: 'analytics-service-group',
         },
       },
     },
@@ -108,7 +111,6 @@ export const CLIENTS_CONFIG = {
 
 // Client Names for injection
 export const CLIENT_NAMES = {
-  RABBITMQ: 'RABBITMQ_CLIENT',
   USER_SERVICE: 'USER_SERVICE_CLIENT',
   LESSON_SERVICE: 'LESSON_SERVICE_CLIENT',
   PROGRESS_SERVICE: 'PROGRESS_SERVICE_CLIENT',

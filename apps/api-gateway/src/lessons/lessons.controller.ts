@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Inject, Post, HttpException, HttpStatus, Query, Param, UseGuards, Logger } from '@nestjs/common';
+import { ClerkAuthGuard, CurrentUser, UserAuthPayload, Public, CLIENT_NAMES } from '@puchi-be/shared';
 import { ClientProxy } from '@nestjs/microservices';
-import { LESSON_SERVICE_RABBITMQ } from '../constants';
-import { ClerkAuthGuard, CurrentUser, UserAuthPayload } from '@puchi-be/shared';
 import { firstValueFrom } from 'rxjs';
 
 @Controller('lessons')
@@ -9,7 +8,7 @@ export class LessonsController {
   private readonly logger = new Logger(LessonsController.name);
 
   constructor(
-    @Inject(LESSON_SERVICE_RABBITMQ) private readonly client: ClientProxy
+    @Inject(CLIENT_NAMES.LESSON_SERVICE) private readonly lessonClient: ClientProxy
   ) { }
 
   @Post()
@@ -18,7 +17,7 @@ export class LessonsController {
     this.logger.log(`Creating lesson: ${lesson.title} by user: ${user.id}`);
 
     try {
-      await firstValueFrom(this.client.emit("lesson-created", {
+      await firstValueFrom(this.lessonClient.emit("lesson-created", {
         lesson,
         user: { id: user.id, email: user.email }
       }));
@@ -39,20 +38,16 @@ export class LessonsController {
     }
   }
 
-  @Get()
+  @Get('list')
   @UseGuards(ClerkAuthGuard)
-  async getLessons(
-    @Query('page') page = '1',
-    @Query('limit') limit = '10',
-    @CurrentUser() user: UserAuthPayload
-  ) {
-    this.logger.log(`Getting lessons for user: ${user.id}, page: ${page}, limit: ${limit}`);
+  async getLessons(@CurrentUser() user: UserAuthPayload) {
+    this.logger.log(`Getting lessons for user: ${user.id}`);
 
     try {
-      const response = await firstValueFrom(this.client.send('get-lessons', {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        user: { id: user.id }
+      const response = await firstValueFrom(this.lessonClient.send('get-lessons', {
+        page: 1,
+        limit: 10,
+        userId: user.id
       }));
 
       if (!response.success) {
@@ -84,9 +79,9 @@ export class LessonsController {
     this.logger.log(`Getting lesson by ID: ${id} for user: ${user.id}`);
 
     try {
-      const response = await firstValueFrom(this.client.send('get-lesson-by-id', {
+      const response = await firstValueFrom(this.lessonClient.send('get-lesson-by-id', {
         id,
-        user: { id: user.id }
+        userId: user.id
       }));
 
       if (!response.success) {
@@ -118,8 +113,8 @@ export class LessonsController {
     this.logger.log(`Getting progress for user: ${user.id}`);
 
     try {
-      const response = await firstValueFrom(this.client.send('get-user-progress', {
-        user: { id: user.id }
+      const response = await firstValueFrom(this.lessonClient.send('get-user-progress', {
+        userId: user.id
       }));
 
       if (!response.success) {
@@ -143,5 +138,16 @@ export class LessonsController {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  @Get('public-list')
+  @Public()
+  async getPublicLessons() {
+    this.logger.log('Getting public lessons');
+
+    return {
+      message: 'Public lessons information',
+      timestamp: new Date().toISOString()
+    };
   }
 } 

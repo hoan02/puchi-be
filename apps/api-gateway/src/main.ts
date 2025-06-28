@@ -6,6 +6,7 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
+import { SERVICE_PORTS } from '@puchi-be/shared';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -35,7 +36,7 @@ async function bootstrap() {
     next();
   });
 
-  const port = process.env.PORT || 8080;
+  const port = process.env.PORT || SERVICE_PORTS.API_GATEWAY;
   await app.listen(port);
   logger.log(`🚀 API Gateway is running on: http://localhost:${port}/${globalPrefix}`);
 }
