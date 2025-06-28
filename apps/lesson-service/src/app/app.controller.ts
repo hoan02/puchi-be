@@ -24,23 +24,29 @@ export class AppController {
   }
 
   @MessagePattern("lesson-created")
-  async handleLessonCreated(@Payload() lessonData: CreateLessonDto & { createdBy: string; userEmail?: string }) {
+  async handleLessonCreated(@Payload() data: { lesson: CreateLessonDto; user: { id: string; email: string } }) {
     try {
-      this.logger.log(`Processing lesson creation: ${lessonData.title} by user: ${lessonData.createdBy}`);
+      const { lesson: lessonData, user } = data;
+      this.logger.log(`Processing lesson creation: ${lessonData.title} by user: ${user.id}`);
+
+      // Validate lesson data
+      if (!lessonData.title || !lessonData.durationMinutes) {
+        throw new Error('Invalid lesson data: title and durationMinutes are required');
+      }
 
       // Check if user exists, if not create user
-      let user = await this.prismaService.user.findUnique({
-        where: { clerkId: lessonData.createdBy }
+      let dbUser = await this.prismaService.user.findUnique({
+        where: { clerkId: user.id }
       });
 
-      if (!user) {
-        user = await this.prismaService.user.create({
+      if (!dbUser) {
+        dbUser = await this.prismaService.user.create({
           data: {
-            clerkId: lessonData.createdBy,
-            email: lessonData.userEmail || 'unknown@example.com',
+            clerkId: user.id,
+            email: user.email,
           }
         });
-        this.logger.log(`Created new user: ${user.id}`);
+        this.logger.log(`Created new user: ${dbUser.id}`);
       }
 
       // Save lesson to database
@@ -49,7 +55,7 @@ export class AppController {
           title: lessonData.title,
           description: lessonData.description,
           durationMinutes: lessonData.durationMinutes,
-          createdBy: lessonData.createdBy,
+          createdBy: user.id,
         },
         include: {
           creator: true,
@@ -67,26 +73,37 @@ export class AppController {
       ]);
 
       this.logger.log(`All events emitted successfully for lesson: ${savedLesson.id}`);
+
+      return {
+        success: true,
+        lesson: savedLesson,
+        message: 'Lesson created successfully'
+      };
     } catch (error) {
       this.logger.error(`Error processing lesson creation: ${error.message}`, error.stack);
       // Emit error event for monitoring
       await this.notificationRMQClient.emit("lesson-error", {
         error: error.message,
-        lessonData,
+        lessonData: data,
         timestamp: new Date().toISOString(),
       }).toPromise();
+
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
   @MessagePattern("get-lessons")
-  async handleGetLessons(@Payload() data: { page: number; limit: number; userId: string }) {
+  async handleGetLessons(@Payload() data: { page: number; limit: number; user: { id: string } }) {
     try {
-      const { page, limit, userId } = data;
+      const { page, limit, user } = data;
       const skip = (page - 1) * limit;
 
       const lessons = await this.prismaService.lesson.findMany({
         where: {
-          createdBy: userId,
+          createdBy: user.id,
         },
         include: {
           creator: true,
@@ -100,55 +117,74 @@ export class AppController {
 
       const total = await this.prismaService.lesson.count({
         where: {
-          createdBy: userId,
+          createdBy: user.id,
         },
       });
 
       return {
-        lessons,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
+        success: true,
+        data: {
+          lessons,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
+        }
       };
     } catch (error) {
       this.logger.error(`Error fetching lessons: ${error.message}`, error.stack);
-      throw error;
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
   @MessagePattern("get-lesson-by-id")
-  async handleGetLessonById(@Payload() data: { id: string; userId: string }) {
+  async handleGetLessonById(@Payload() data: { id: string; user: { id: string } }) {
     try {
-      const { id, userId } = data;
+      const { id, user } = data;
 
       const lesson = await this.prismaService.lesson.findFirst({
         where: {
           id,
-          createdBy: userId,
+          createdBy: user.id,
         },
         include: {
           creator: true,
         },
       });
 
-      return lesson;
+      if (!lesson) {
+        return {
+          success: false,
+          error: 'Lesson not found'
+        };
+      }
+
+      return {
+        success: true,
+        data: lesson
+      };
     } catch (error) {
       this.logger.error(`Error fetching lesson by ID: ${error.message}`, error.stack);
-      throw error;
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
   @MessagePattern("get-user-progress")
-  async handleGetUserProgress(@Payload() data: { userId: string }) {
+  async handleGetUserProgress(@Payload() data: { user: { id: string } }) {
     try {
-      const { userId } = data;
+      const { user } = data;
 
       const progress = await this.prismaService.userProgress.findMany({
         where: {
-          userId,
+          userId: user.id,
         },
         include: {
           lesson: true,
@@ -158,10 +194,16 @@ export class AppController {
         },
       });
 
-      return progress;
+      return {
+        success: true,
+        data: progress
+      };
     } catch (error) {
       this.logger.error(`Error fetching user progress: ${error.message}`, error.stack);
-      throw error;
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 }

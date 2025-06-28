@@ -8,7 +8,7 @@ PuchiBe là hệ thống backend sử dụng kiến trúc microservices, đượ
 - **NestJS** (v11)
 - **Prisma ORM**
 - **RabbitMQ** (message broker)
-- **Clerk** (authentication)
+- **Clerk** (authentication) - Sử dụng @clerk/backend
 - **Nx Monorepo**
 - **Jest** (unit test)
 - **ESLint, Prettier** (code style)
@@ -16,10 +16,10 @@ PuchiBe là hệ thống backend sử dụng kiến trúc microservices, đượ
 
 ## 🏗️ Kiến trúc tổng quan
 
-- **API Gateway**: Entry point cho client, xác thực qua Clerk, nhận request và emit event qua RabbitMQ.
+- **API Gateway**: Entry point cho client, xác thực qua Clerk Backend SDK, nhận request và emit event qua RabbitMQ.
 - **Lesson Service**: Xử lý logic bài học, lưu vào database, phát tán event sang các service khác.
 - **Các service khác**: (progress, audio, notification, vocab) nhận event để xử lý nghiệp vụ riêng.
-- **Shared Library**: Chứa DTO, interface, constants, utils, guards, decorators dùng chung.
+- **Shared Library**: Chứa DTO, interface, constants, utils, guards, decorators, services dùng chung.
 
 ## 📦 Cấu trúc thư mục
 
@@ -30,7 +30,7 @@ apps/
   ...-e2e/             # E2E test
 libs/
   database/            # PrismaService, DatabaseModule
-  shared/              # DTO, interface, utils, guards, decorators
+  shared/              # DTO, interface, utils, guards, decorators, services
 prisma/schema.prisma   # Định nghĩa database
 prisma/seed.ts         # Database seeding
 ```
@@ -48,8 +48,8 @@ sequenceDiagram
     participant Other-Services
 
     Client->>API-Gateway: POST /lesson (with Bearer token)
-    API-Gateway->>Clerk: Verify token
-    Clerk->>API-Gateway: User info
+    API-Gateway->>Clerk: ClerkService.verifyToken()
+    Clerk->>API-Gateway: User info via @clerk/backend
     API-Gateway->>RabbitMQ: emit lesson-created (with user data)
     RabbitMQ->>Lesson-Service: lesson-created event
     Lesson-Service->>Database: Lưu lesson + user
@@ -73,24 +73,24 @@ Tạo file `.env` với các biến sau:
 # Database
 DATABASE_URL="postgresql://username:password@localhost:5432/puchi_db"
 
-# Clerk Authentication
+# Clerk Authentication (Backend SDK)
 CLERK_SECRET_KEY="sk_test_your_clerk_secret_key_here"
-CLERK_PUBLISHABLE_KEY="pk_test_your_clerk_publishable_key_here"
 
 # RabbitMQ
 RABBITMQ_URL="amqp://guest:guest@localhost:5672"
 
 # Application
 NODE_ENV="development"
-PORT=3000
+PORT=8080
 ```
 
 ### 3. Thiết lập Clerk:
 
 1. Đăng ký tài khoản tại [clerk.com](https://clerk.com)
 2. Tạo application mới
-3. Copy Secret Key và Publishable Key vào file `.env`
+3. Copy Secret Key vào file `.env`
 4. Cấu hình CORS origins cho frontend domain
+5. Sử dụng **@clerk/backend** cho server-side authentication
 
 ### 4. Khởi động RabbitMQ:
 
@@ -198,7 +198,7 @@ npm run graph                 # Xem project dependency graph
 
 Backend này được thiết kế để tích hợp với [Puchi Frontend](https://github.com/hoan02/puchi) sử dụng:
 
-- **Clerk Authentication**: Xác thực user qua JWT tokens
+- **Clerk Backend Authentication**: Xác thực user qua JWT tokens với @clerk/backend
 - **RESTful APIs**: Giao tiếp qua HTTP/HTTPS
 - **Real-time updates**: Qua RabbitMQ events
 

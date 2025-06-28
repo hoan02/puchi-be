@@ -1,10 +1,8 @@
-import { Body, Controller, Get, Inject, Post, HttpException, HttpStatus, Query, Param, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Post, HttpException, HttpStatus, Query, Param, Headers, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ClientProxy } from '@nestjs/microservices';
 import { LESSON_SERVICE_RABBITMQ } from '../constants';
-import { CreateLessonDto, LessonResponseDto } from '@puchi-be/shared';
-import { ClerkGuard } from '@puchi-be/shared';
-import { CurrentUser, UserPayload } from '@puchi-be/shared';
+import { ClerkAuthGuard, CurrentUser, UserAuthPayload, Public } from '@puchi-be/shared';
 
 @Controller()
 export class AppController {
@@ -13,67 +11,62 @@ export class AppController {
   ) { }
 
   @Get()
+  @Public()
   getData() {
     return this.appService.getData();
   }
 
   @Post("lesson")
-  @UseGuards(ClerkGuard)
-  async createLesson(@Body() lesson: CreateLessonDto, @CurrentUser() user: UserPayload) {
+  @UseGuards(ClerkAuthGuard)
+  async createLesson(@Body() lesson: any, @CurrentUser() user: UserAuthPayload) {
     try {
-      // Validate lesson data
-      if (!lesson.title || !lesson.durationMinutes) {
-        throw new HttpException('Invalid lesson data', HttpStatus.BAD_REQUEST);
-      }
-
-      // Add user info to lesson data
-      const lessonWithUser = {
-        ...lesson,
-        createdBy: user.id,
-        userEmail: user.email,
-      };
-
-      // Emit event with error handling
-      await this.client.emit("lesson-created", lessonWithUser).toPromise();
+      // Forward request with user info to lesson service via RabbitMQ
+      await this.client.emit("lesson-created", {
+        lesson,
+        user: { id: user.userId, email: user.username }
+      }).toPromise();
 
       return {
-        message: "Lesson sent to RabbitMQ successfully",
-        lesson: lessonWithUser,
+        message: "Lesson request sent to lesson service",
+        lesson,
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      console.error('Error creating lesson:', error);
+      console.error('Error forwarding lesson request:', error);
       throw new HttpException(
-        'Failed to create lesson',
+        'Failed to process lesson request',
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
   @Get("lessons")
-  @UseGuards(ClerkGuard)
+  @UseGuards(ClerkAuthGuard)
   async getLessons(
-    @Query('page') page: string = '1',
-    @Query('limit') limit: string = '10',
-    @CurrentUser() user: UserPayload
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @CurrentUser() user: UserAuthPayload
   ) {
     try {
       const response = await this.client.send('get-lessons', {
         page: parseInt(page),
         limit: parseInt(limit),
-        userId: user.id
+        user: { id: user.userId }
       }).toPromise();
 
+      if (!response.success) {
+        throw new HttpException(response.error, HttpStatus.BAD_REQUEST);
+      }
+
       return {
-        data: response,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          timestamp: new Date().toISOString()
-        }
+        data: response.data,
+        timestamp: new Date().toISOString()
       };
     } catch (error) {
       console.error('Error fetching lessons:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         'Failed to fetch lessons',
         HttpStatus.INTERNAL_SERVER_ERROR
@@ -82,20 +75,20 @@ export class AppController {
   }
 
   @Get("lesson/:id")
-  @UseGuards(ClerkGuard)
-  async getLessonById(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+  @UseGuards(ClerkAuthGuard)
+  async getLessonById(@Param('id') id: string, @CurrentUser() user: UserAuthPayload) {
     try {
-      const lesson = await this.client.send('get-lesson-by-id', {
+      const response = await this.client.send('get-lesson-by-id', {
         id,
-        userId: user.id
+        user: { id: user.userId }
       }).toPromise();
 
-      if (!lesson) {
-        throw new HttpException('Lesson not found', HttpStatus.NOT_FOUND);
+      if (!response.success) {
+        throw new HttpException(response.error, HttpStatus.NOT_FOUND);
       }
 
       return {
-        data: lesson,
+        data: response.data,
         timestamp: new Date().toISOString()
       };
     } catch (error) {
@@ -111,19 +104,26 @@ export class AppController {
   }
 
   @Get("my-progress")
-  @UseGuards(ClerkGuard)
-  async getMyProgress(@CurrentUser() user: UserPayload) {
+  @UseGuards(ClerkAuthGuard)
+  async getMyProgress(@CurrentUser() user: UserAuthPayload) {
     try {
-      const progress = await this.client.send('get-user-progress', {
-        userId: user.id
+      const response = await this.client.send('get-user-progress', {
+        user: { id: user.userId }
       }).toPromise();
 
+      if (!response.success) {
+        throw new HttpException(response.error, HttpStatus.BAD_REQUEST);
+      }
+
       return {
-        data: progress,
+        data: response.data,
         timestamp: new Date().toISOString()
       };
     } catch (error) {
       console.error('Error fetching user progress:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         'Failed to fetch user progress',
         HttpStatus.INTERNAL_SERVER_ERROR
