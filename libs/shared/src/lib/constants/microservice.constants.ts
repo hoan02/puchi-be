@@ -1,2 +1,33 @@
 export const LESSON_SERVICE = 'LESSON_SERVICE';
 export const USER_SERVICE = 'USER_SERVICE';
+export const PROGRESS_SERVICE = 'PROGRESS_SERVICE';
+export const MEDIA_SERVICE = 'MEDIA_SERVICE';
+export const NOTIFICATION_SERVICE = 'NOTIFICATION_SERVICE';
+export const VOCABULARY_SERVICE = 'VOCABULARY_SERVICE';
+export const QUIZ_SERVICE = 'QUIZ_SERVICE';
+export const ANALYTICS_SERVICE = 'ANALYTICS_SERVICE';
+
+// Service Ports
+export const SERVICE_PORTS = {
+  API_GATEWAY: 8000,
+  USER_SERVICE: 8001,
+  LESSON_SERVICE: 8002,
+  PROGRESS_SERVICE: 8003,
+  MEDIA_SERVICE: 8004,
+  NOTIFICATION_SERVICE: 8005,
+  VOCABULARY_SERVICE: 8006,
+  QUIZ_SERVICE: 8007,
+  ANALYTICS_SERVICE: 8008,
+} as const;
+
+// Service URLs (for development)
+export const SERVICE_URLS = {
+  USER_SERVICE: 'http://localhost:8001',
+  LESSON_SERVICE: 'http://localhost:8002',
+  PROGRESS_SERVICE: 'http://localhost:8003',
+  MEDIA_SERVICE: 'http://localhost:8004',
+  NOTIFICATION_SERVICE: 'http://localhost:8005',
+  VOCABULARY_SERVICE: 'http://localhost:8006',
+  QUIZ_SERVICE: 'http://localhost:8007',
+  ANALYTICS_SERVICE: 'http://localhost:8008',
+} as const;

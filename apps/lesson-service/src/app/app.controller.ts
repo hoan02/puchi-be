@@ -4,6 +4,7 @@ import { ClientProxy, MessagePattern, Payload } from '@nestjs/microservices';
 import { AUDIO_CLIENT, NOTIFICATION_CLIENT, PROGRESS_CLIENT, VOCAB_CLIENT } from '../constants';
 import { CreateLessonDto, LessonResponseDto } from '@puchi-be/shared';
 import { PrismaService } from '@puchi-be/database';
+import { firstValueFrom } from 'rxjs';
 
 @Controller()
 export class AppController {
@@ -68,20 +69,20 @@ export class AppController {
       // Emit events to other services
       await Promise.all([
         // Notify progress service to create progress tracking
-        this.progressClient.emit("lesson-available", {
+        firstValueFrom(this.progressClient.emit("lesson-available", {
           lessonId: savedLesson.id,
           userId: user.id,
           title: savedLesson.title,
           durationMinutes: savedLesson.durationMinutes
-        }).toPromise(),
+        })),
 
         // Notify user service about new lesson creation
-        this.userClient.emit("user-activity", {
+        firstValueFrom(this.userClient.emit("user-activity", {
           userId: user.id,
           activity: 'lesson_created',
           lessonId: savedLesson.id,
           timestamp: new Date().toISOString()
-        }).toPromise(),
+        })),
       ]);
 
       this.logger.log(`All events emitted successfully for lesson: ${savedLesson.id}`);

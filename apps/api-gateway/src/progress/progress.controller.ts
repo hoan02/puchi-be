@@ -1,9 +1,12 @@
-import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, UseGuards, Logger } from '@nestjs/common';
 import { ClerkAuthGuard, CurrentUser, UserAuthPayload } from '@puchi-be/shared';
 import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 
 @Controller('progress')
 export class ProgressController {
+  private readonly logger = new Logger(ProgressController.name);
+
   constructor(
     @Inject('PROGRESS_SERVICE') private readonly progressClient: ClientProxy
   ) { }
@@ -11,8 +14,13 @@ export class ProgressController {
   @Get('my')
   @UseGuards(ClerkAuthGuard)
   async getMyProgress(@CurrentUser() user: UserAuthPayload) {
+    this.logger.log(`Getting progress for user: ${user.id}`);
+
     // Gửi message sang progress-service
-    const progress = await this.progressClient.send('get-user-progress', { userId: user.userId }).toPromise();
+    const progress = await firstValueFrom(this.progressClient.send('get-user-progress', { userId: user.id }));
+
+    this.logger.log(`Retrieved progress for user: ${user.id}`);
+
     return { data: progress, timestamp: new Date().toISOString() };
   }
 } 

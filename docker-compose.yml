@@ -9,3 +9,67 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
 
+  # Core Database (User + Lesson + Progress)
+  core-db:
+    image: postgres:15
+    container_name: core-db
+    environment:
+      POSTGRES_DB: puchi_core
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: puchi_password
+    ports:
+      - '5432:5432'
+    volumes:
+      - core_db_data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+
+  # Support Database (Notification + Analytics)
+  support-db:
+    image: postgres:15
+    container_name: support-db
+    environment:
+      POSTGRES_DB: puchi_support
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: puchi_password
+    ports:
+      - '5433:5432'
+    volumes:
+      - support_db_data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=100
+      -c shared_buffers=128MB
+      -c effective_cache_size=512MB
+
+  # Feature Database (Audio + Vocabulary + Quiz) - Optional
+  feature-db:
+    image: postgres:15
+    container_name: feature-db
+    environment:
+      POSTGRES_DB: puchi_feature
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: puchi_password
+    ports:
+      - '5434:5432'
+    volumes:
+      - feature_db_data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=50
+      -c shared_buffers=64MB
+      -c effective_cache_size=256MB
+
+volumes:
+  core_db_data:
+  support_db_data:
+  feature_db_data:

@@ -1,17 +1,22 @@
 import { NestFactory } from '@nestjs/core';
+import { Transport } from '@nestjs/microservices';
 import { AppModule } from './app/app.module';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { SERVICE_PORTS, QUEUE_USER } from '@puchi-be/shared';
 
 async function bootstrap() {
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+  const app = await NestFactory.createMicroservice(AppModule, {
     transport: Transport.RMQ,
     options: {
       urls: ['amqp://guest:guest@localhost:5672'],
-      queue: 'user_queue',
-      queueOptions: { durable: true },
+      queue: QUEUE_USER,
+      queueOptions: {
+        durable: true,
+      },
     },
   });
+
   await app.listen();
-  console.log('User service is running (RabbitMQ)');
+  console.log(`User Service is running on port ${SERVICE_PORTS.USER_SERVICE}`);
 }
+
 bootstrap(); 

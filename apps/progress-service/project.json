@@ -1,33 +1,44 @@
 {
   "name": "progress-service",
-  "root": "apps/progress-service",
-  "projectType": "application",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/progress-service/src",
+  "projectType": "application",
+  "tags": [],
   "targets": {
     "build": {
-      "executor": "@nrwl/node:build",
-      "outputs": ["{options.outputPath}"],
+      "executor": "nx:run-commands",
       "options": {
-        "outputPath": "dist/apps/progress-service",
-        "main": "apps/progress-service/src/main.ts",
-        "tsConfig": "apps/progress-service/tsconfig.app.json",
-        "assets": ["apps/progress-service/src/assets"]
+        "command": "webpack-cli build",
+        "args": ["node-env=production"]
+      },
+      "configurations": {
+        "development": {
+          "args": ["node-env=development"]
+        }
       }
     },
     "serve": {
-      "executor": "@nrwl/node:execute",
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
       "options": {
-        "buildTarget": "progress-service:build"
+        "buildTarget": "progress-service:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "progress-service:build:development"
+        },
+        "production": {
+          "buildTarget": "progress-service:build:production"
+        }
       }
     },
     "test": {
-      "executor": "@nrwl/jest:jest",
-      "outputs": ["{options.outputPath}"],
       "options": {
-        "jestConfig": "apps/progress-service/jest.config.ts",
         "passWithNoTests": true
       }
     }
-  },
-  "tags": []
+  }
 }

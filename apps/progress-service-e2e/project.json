@@ -1,0 +1,17 @@
+{
+  "name": "progress-service-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "implicitDependencies": ["progress-service"],
+  "targets": {
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{e2eProjectRoot}"],
+      "options": {
+        "jestConfig": "apps/progress-service-e2e/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "dependsOn": ["progress-service:build", "progress-service:serve"]
+    }
+  }
+}

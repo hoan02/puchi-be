@@ -1,27 +1,21 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AppService } from './app.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) { }
-
-  @Get('health')
-  getHealth() {
-    return {
-      status: 'ok',
-      service: 'user-service',
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  @MessagePattern('get-user-profile')
+   @MessagePattern('get-user-profile')
   getUserProfile(@Payload() data: { userId: string }) {
-    // Dummy data
+    console.log('data', data);
+    // Dummy data - trả về format đúng với UserAuthPayload
+
     return {
-      userId: data.userId,
+      id: data.userId,
       email: `user${data.userId}@example.com`,
-      name: `User ${data.userId}`,
+      firstName: `User`,
+      lastName: data.userId,
+      profileImageUrl: `https://example.com/avatar/${data.userId}.jpg`,
+      username: `user${data.userId}`,
     };
   }
 
@@ -43,4 +37,4 @@ export class AppController {
       }
     };
   }
-} 
+}

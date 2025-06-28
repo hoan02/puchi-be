@@ -1,10 +1,13 @@
-import { Body, Controller, Get, Inject, Post, HttpException, HttpStatus, Query, Param, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Post, HttpException, HttpStatus, Query, Param, UseGuards, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { LESSON_SERVICE_RABBITMQ } from '../constants';
 import { ClerkAuthGuard, CurrentUser, UserAuthPayload } from '@puchi-be/shared';
+import { firstValueFrom } from 'rxjs';
 
 @Controller('lessons')
 export class LessonsController {
+  private readonly logger = new Logger(LessonsController.name);
+
   constructor(
     @Inject(LESSON_SERVICE_RABBITMQ) private readonly client: ClientProxy
   ) { }
@@ -12,11 +15,15 @@ export class LessonsController {
   @Post()
   @UseGuards(ClerkAuthGuard)
   async createLesson(@Body() lesson: any, @CurrentUser() user: UserAuthPayload) {
+    this.logger.log(`Creating lesson: ${lesson.title} by user: ${user.id}`);
+
     try {
-      await this.client.emit("lesson-created", {
+      await firstValueFrom(this.client.emit("lesson-created", {
         lesson,
-        user: { id: user.userId, email: user.username }
-      }).toPromise();
+        user: { id: user.id, email: user.email }
+      }));
+
+      this.logger.log(`Lesson created successfully: ${lesson.title}`);
 
       return {
         message: "Lesson request sent to lesson service",
@@ -24,7 +31,7 @@ export class LessonsController {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      console.error('Error forwarding lesson request:', error);
+      this.logger.error(`Error creating lesson: ${error.message}`, error.stack);
       throw new HttpException(
         'Failed to process lesson request',
         HttpStatus.INTERNAL_SERVER_ERROR
@@ -39,23 +46,28 @@ export class LessonsController {
     @Query('limit') limit = '10',
     @CurrentUser() user: UserAuthPayload
   ) {
+    this.logger.log(`Getting lessons for user: ${user.id}, page: ${page}, limit: ${limit}`);
+
     try {
-      const response = await this.client.send('get-lessons', {
+      const response = await firstValueFrom(this.client.send('get-lessons', {
         page: parseInt(page),
         limit: parseInt(limit),
-        user: { id: user.userId }
-      }).toPromise();
+        user: { id: user.id }
+      }));
 
       if (!response.success) {
+        this.logger.warn(`Failed to get lessons: ${response.error}`);
         throw new HttpException(response.error, HttpStatus.BAD_REQUEST);
       }
+
+      this.logger.log(`Retrieved ${response.data.lessons?.length || 0} lessons for user: ${user.id}`);
 
       return {
         data: response.data,
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      console.error('Error fetching lessons:', error);
+      this.logger.error(`Error fetching lessons: ${error.message}`, error.stack);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -69,15 +81,20 @@ export class LessonsController {
   @Get(':id')
   @UseGuards(ClerkAuthGuard)
   async getLessonById(@Param('id') id: string, @CurrentUser() user: UserAuthPayload) {
+    this.logger.log(`Getting lesson by ID: ${id} for user: ${user.id}`);
+
     try {
-      const response = await this.client.send('get-lesson-by-id', {
+      const response = await firstValueFrom(this.client.send('get-lesson-by-id', {
         id,
-        user: { id: user.userId }
-      }).toPromise();
+        user: { id: user.id }
+      }));
 
       if (!response.success) {
+        this.logger.warn(`Lesson not found: ${id}`);
         throw new HttpException(response.error, HttpStatus.NOT_FOUND);
       }
+
+      this.logger.log(`Retrieved lesson: ${id}`);
 
       return {
         data: response.data,
@@ -87,7 +104,7 @@ export class LessonsController {
       if (error instanceof HttpException) {
         throw error;
       }
-      console.error('Error fetching lesson:', error);
+      this.logger.error(`Error fetching lesson: ${error.message}`, error.stack);
       throw new HttpException(
         'Failed to fetch lesson',
         HttpStatus.INTERNAL_SERVER_ERROR
@@ -98,21 +115,26 @@ export class LessonsController {
   @Get('my-progress')
   @UseGuards(ClerkAuthGuard)
   async getMyProgress(@CurrentUser() user: UserAuthPayload) {
+    this.logger.log(`Getting progress for user: ${user.id}`);
+
     try {
-      const response = await this.client.send('get-user-progress', {
-        user: { id: user.userId }
-      }).toPromise();
+      const response = await firstValueFrom(this.client.send('get-user-progress', {
+        user: { id: user.id }
+      }));
 
       if (!response.success) {
+        this.logger.warn(`Failed to get progress: ${response.error}`);
         throw new HttpException(response.error, HttpStatus.BAD_REQUEST);
       }
+
+      this.logger.log(`Retrieved progress for user: ${user.id}`);
 
       return {
         data: response.data,
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      console.error('Error fetching user progress:', error);
+      this.logger.error(`Error fetching user progress: ${error.message}`, error.stack);
       if (error instanceof HttpException) {
         throw error;
       }

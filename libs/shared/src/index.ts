@@ -11,3 +11,4 @@ export * from './lib/providers/clerk-client.provider'
 
 export * from './lib/auth'
 export * from './lib/users'
+export * from './lib/modules/clients.module';

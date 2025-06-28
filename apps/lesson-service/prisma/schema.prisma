@@ -1,0 +1,41 @@
+// This is your Prisma schema file for Lesson Service
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("LESSON_DATABASE_URL")
+}
+
+model Lesson {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  durationMinutes Int
+  createdBy       String // Clerk user ID
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  progress UserProgress[]
+
+  @@map("lessons")
+}
+
+model UserProgress {
+  id        String   @id @default(cuid())
+  userId    String // Clerk user ID (reference to User service)
+  lessonId  String
+  progress  Float    @default(0) // 0-100 percentage
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lesson Lesson @relation(fields: [lessonId], references: [id])
+
+  @@unique([userId, lessonId])
+  @@map("user_progress")
+}

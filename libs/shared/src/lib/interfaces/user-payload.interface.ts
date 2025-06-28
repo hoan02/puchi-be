@@ -1,5 +1,8 @@
 export interface UserAuthPayload {
-  userId: string;
-  username: string;
-  role: string;
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+  username?: string;
 }
