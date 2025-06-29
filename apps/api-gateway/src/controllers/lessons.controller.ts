@@ -1,18 +1,58 @@
-import { Body, Controller, Get, Inject, Post, HttpException, HttpStatus, Query, Param, UseGuards, Logger } from '@nestjs/common';
-import { ClerkAuthGuard, CurrentUser, UserAuthPayload, Public, CLIENT_NAMES } from '@puchi-be/shared';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { Body, Controller, Get, Inject, Post, HttpException, HttpStatus, Param, UseGuards } from '@nestjs/common';
+import {
+  ClerkAuthGuard,
+  CurrentUser,
+  UserAuthPayload,
+  Public,
+  CLIENT_KAFKA_NAMES,
+  BaseController,
+  ServiceClient
+} from '@puchi-be/shared';
 import { CreateLessonRequestDto, ApiResponseDto, LessonsListResponseDto, LessonResponseDto } from '../dto/lesson.dto';
-import { CreateLessonEvent, GetLessonsEvent, GetLessonByIdEvent, GetUserProgressEvent } from '../events/lesson.events';
+import { GetLessonsEvent, GetLessonByIdEvent, GetUserProgressEvent } from '../events/lesson.events';
 import { LessonCreatedEvent } from '@puchi-be/shared';
+import { ClientKafka } from '@nestjs/microservices/client';
 
 @Controller('lessons')
-export class LessonsController {
-  private readonly logger = new Logger(LessonsController.name);
-
+export class LessonsController extends BaseController {
   constructor(
-    @Inject(CLIENT_NAMES.LESSON_SERVICE) private readonly lessonClient: ClientProxy
-  ) { }
+    @Inject(CLIENT_KAFKA_NAMES.LESSON_CLIENT)
+    private readonly lessonClient: ClientKafka
+  ) {
+    super('LessonsController', '1.0.0', 8000);
+  }
+
+  async initializeServiceClients(): Promise<void> {
+    this.registerServiceClient('lesson-service', this.lessonClient);
+  }
+
+  async initializeResources(): Promise<void> {
+    // Khởi tạo các tài nguyên cần thiết
+    this.logger.log('Lessons controller resources initialized');
+  }
+
+  async cleanupResources(): Promise<void> {
+    this.logger.log('Lessons controller resources cleaned up');
+  }
+
+  async registerHealthCheck(): Promise<void> {
+    this.logger.log('Lessons controller health check registered');
+  }
+
+  async deregisterFromServiceRegistry(): Promise<void> {
+    this.logger.log('Lessons controller deregistered from service registry');
+  }
+
+  protected async subscribeServiceReplyTopics(serviceName: string, client: ClientKafka): Promise<void> {
+    if (serviceName === 'lesson-service') {
+      // Subscribe reply topics cho lesson service
+      client.subscribeToResponseOf('get-lessons');
+      client.subscribeToResponseOf('get-lesson-by-id');
+      client.subscribeToResponseOf('get-user-progress');
+      await client.connect();
+      this.logger.log(`Subscribed to reply topics for ${serviceName}`);
+    }
+  }
 
   @Post()
   @UseGuards(ClerkAuthGuard)
@@ -28,7 +68,11 @@ export class LessonsController {
         user.id,
       );
 
-      const result = await this.lessonClient.emit('lesson-created', event.toString()).toPromise();
+      // Sử dụng ServiceClient với circuit breaker
+      await this.sendToService('lesson-service', 'lesson-created', event.toString(), {
+        timeout: 15000,
+        retries: 3
+      });
 
       this.logger.log(`Lesson created successfully: ${createLessonDto.title}`);
 
@@ -38,7 +82,7 @@ export class LessonsController {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      this.logger.error(`Error creating lesson: ${error.message}`, error.stack);
+      this.logger.error(`Error creating lesson: ${error instanceof Error ? error.message : 'Unknown error'}`, error instanceof Error ? error.stack : undefined);
       return {
         data: null,
         message: "Failed to create lesson",
@@ -59,7 +103,11 @@ export class LessonsController {
         userId: user.id
       };
 
-      const response = await firstValueFrom(this.lessonClient.send('get-lessons', event));
+      // Sử dụng ServiceClient với circuit breaker
+      const response = await this.sendToService('lesson-service', 'get-lessons', event, {
+        timeout: 10000,
+        retries: 2
+      });
 
       if (!response.success) {
         this.logger.warn(`Failed to get lessons: ${response.error}`);
@@ -73,7 +121,7 @@ export class LessonsController {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      this.logger.error(`Error fetching lessons: ${error.message}`, error.stack);
+      this.logger.error(`Error fetching lessons: ${error instanceof Error ? error.message : 'Unknown error'}`, error instanceof Error ? error.stack : undefined);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -95,7 +143,11 @@ export class LessonsController {
         userId: user.id
       };
 
-      const response = await firstValueFrom(this.lessonClient.send('get-lesson-by-id', event));
+      // Sử dụng ServiceClient với circuit breaker
+      const response = await this.sendToService('lesson-service', 'get-lesson-by-id', event, {
+        timeout: 10000,
+        retries: 2
+      });
 
       if (!response.success) {
         this.logger.warn(`Lesson not found: ${id}`);
@@ -112,7 +164,7 @@ export class LessonsController {
       if (error instanceof HttpException) {
         throw error;
       }
-      this.logger.error(`Error fetching lesson: ${error.message}`, error.stack);
+      this.logger.error(`Error fetching lesson: ${error instanceof Error ? error.message : 'Unknown error'}`, error instanceof Error ? error.stack : undefined);
       throw new HttpException(
         'Failed to fetch lesson',
         HttpStatus.INTERNAL_SERVER_ERROR
@@ -130,7 +182,11 @@ export class LessonsController {
         userId: user.id
       };
 
-      const response = await firstValueFrom(this.lessonClient.send('get-user-progress', event));
+      // Sử dụng ServiceClient với circuit breaker
+      const response = await this.sendToService('lesson-service', 'get-user-progress', event, {
+        timeout: 10000,
+        retries: 2
+      });
 
       if (!response.success) {
         this.logger.warn(`Failed to get progress: ${response.error}`);
@@ -144,7 +200,7 @@ export class LessonsController {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      this.logger.error(`Error fetching user progress: ${error.message}`, error.stack);
+      this.logger.error(`Error fetching user progress: ${error instanceof Error ? error.message : 'Unknown error'}`, error instanceof Error ? error.stack : undefined);
       if (error instanceof HttpException) {
         throw error;
       }

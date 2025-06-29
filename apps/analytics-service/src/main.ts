@@ -6,39 +6,19 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
-import { SERVICE_PORTS } from '@puchi-be/shared';
+import { ANALYTICS_CLIENT_KAFKA_OPTIONS } from '@puchi-be/shared';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
   const logger = new Logger('Analytics Service');
 
-  const globalPrefix = 'api';
-  app.setGlobalPrefix(globalPrefix);
+  // Tạo microservice app với Kafka transport
+  const app = await NestFactory.createMicroservice(
+    AppModule,
+    ANALYTICS_CLIENT_KAFKA_OPTIONS
+  );
 
-  // Enable CORS
-  app.enableCors({
-    origin: ['http://localhost:3000'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    credentials: true,
-  });
-
-  // Add logging middleware
-  app.use((req, res, next) => {
-    const start = Date.now();
-    logger.log(`${req.method} ${req.url} - ${req.ip} - User-Agent: ${req.get('User-Agent')}`);
-
-    res.on('finish', () => {
-      const duration = Date.now() - start;
-      logger.log(`${req.method} ${req.url} - ${res.statusCode} - ${duration}ms`);
-    });
-
-    next();
-  });
-
-  const port = process.env.PORT || SERVICE_PORTS.ANALYTICS_SERVICE;
-  await app.listen(port);
-  logger.log(`🚀 Analytics Service is running on: http://localhost:${port}/${globalPrefix}`);
+  await app.listen();
+  logger.log('🚀 Analytics Service Microservice is running with Kafka transport');
 }
 
 bootstrap();

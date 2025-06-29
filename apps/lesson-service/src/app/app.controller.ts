@@ -1,25 +1,51 @@
 import { Controller, Get, Inject, Logger } from '@nestjs/common';
-import { AppService } from './app.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { ClientProxy } from '@nestjs/microservices';
-import { CreateLessonDto } from '../dto/lesson.dto';
+import { AppService } from './app.service';
+import { ClientKafka } from '@nestjs/microservices/client';
 import { PrismaService } from '@puchi-be/database';
-import { CLIENT_NAMES, LessonCreatedEvent } from '@puchi-be/shared';
-import { firstValueFrom } from 'rxjs';
+import {
+  CLIENT_KAFKA_NAMES,
+  LessonCreatedEvent,
+  BaseController,
+  ServiceClient
+} from '@puchi-be/shared';
 
 @Controller()
-export class AppController {
-  private readonly logger = new Logger(AppController.name);
-
+export class AppController extends BaseController {
   constructor(
     private readonly appService: AppService,
     private readonly prismaService: PrismaService,
-    @Inject(CLIENT_NAMES.USER_SERVICE) private readonly userClient: ClientProxy,
-    @Inject(CLIENT_NAMES.PROGRESS_SERVICE) private readonly progressClient: ClientProxy,
-    @Inject(CLIENT_NAMES.MEDIA_SERVICE) private readonly mediaClient: ClientProxy,
-    @Inject(CLIENT_NAMES.NOTIFICATION_SERVICE) private readonly notificationClient: ClientProxy,
-    @Inject(CLIENT_NAMES.VOCABULARY_SERVICE) private readonly vocabularyClient: ClientProxy,
-  ) { }
+    @Inject(CLIENT_KAFKA_NAMES.USER_CLIENT) private readonly userClient: ClientKafka,
+    @Inject(CLIENT_KAFKA_NAMES.PROGRESS_CLIENT) private readonly progressClient: ClientKafka,
+  ) {
+    super('LessonService', '1.0.0', 8002);
+  }
+
+  async initializeServiceClients(): Promise<void> {
+    this.registerServiceClient('user-service', this.userClient);
+    this.registerServiceClient('progress-service', this.progressClient);
+  }
+
+  async initializeResources(): Promise<void> {
+    // Khởi tạo database connection
+    await this.prismaService.$connect();
+    this.logger.log('Database connection established');
+  }
+
+  async cleanupResources(): Promise<void> {
+    await this.prismaService.$disconnect();
+    this.logger.log('Database connection closed');
+  }
+
+  async registerHealthCheck(): Promise<void> {
+    // Đăng ký health check với service registry (có thể implement sau)
+    this.logger.log('Health check registered');
+  }
+
+  async deregisterFromServiceRegistry(): Promise<void> {
+    // Deregister từ service registry (có thể implement sau)
+    this.logger.log('Deregistered from service registry');
+  }
 
   @Get()
   getData(): { message: string } {
@@ -50,23 +76,23 @@ export class AppController {
 
       this.logger.log(`Lesson saved with ID: ${savedLesson.id}`);
 
-      // Emit events to other services
+      // Sử dụng ServiceClient với circuit breaker
       await Promise.all([
         // Notify progress service to create progress tracking
-        firstValueFrom(this.progressClient.emit("lesson-available", {
+        this.emitToService('progress-service', "lesson-available", {
           lessonId: savedLesson.id,
           userId: event.createdBy,
           title: savedLesson.title,
           durationMinutes: savedLesson.durationMinutes
-        })),
+        }, { timeout: 5000, retries: 3 }),
 
         // Notify user service about new lesson creation
-        firstValueFrom(this.userClient.emit("user-activity", {
+        this.emitToService('user-service', "user-activity", {
           userId: event.createdBy,
           activity: 'lesson_created',
           lessonId: savedLesson.id,
           timestamp: new Date().toISOString()
-        })),
+        }, { timeout: 5000, retries: 3 }),
       ]);
 
       return {
