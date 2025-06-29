@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-kafka-topics
+spec:
+  template:
+    spec:
+      containers:
+        - name: kafka-topics-creator
+          image: confluentinc/cp-kafka:7.4.0
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Waiting for Kafka to be ready..."
+              sleep 30
+
+              echo "Creating Kafka topics..."
+
+              # Create topics for each service
+              kafka-topics --create --topic user-learning-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+              kafka-topics --create --topic lesson-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+              kafka-topics --create --topic progress-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+              kafka-topics --create --topic analytics-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+              kafka-topics --create --topic user-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+              kafka-topics --create --topic media-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+              kafka-topics --create --topic notification-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+              kafka-topics --create --topic vocabulary-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+              kafka-topics --create --topic quiz-events --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+
+              echo "Topics created successfully!"
+
+              # List all topics
+              kafka-topics --list --bootstrap-server kafka:29092
+      restartPolicy: Never
+  backoffLimit: 3

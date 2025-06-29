@@ -1,0 +1,279 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+spec:
+  ports:
+    - port: 2181
+      targetPort: 2181
+  selector:
+    app: zookeeper
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+spec:
+  serviceName: zookeeper
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - name: zookeeper
+          image: confluentinc/cp-zookeeper:7.4.0
+          ports:
+            - containerPort: 2181
+          env:
+            - name: ZOOKEEPER_CLIENT_PORT
+              value: '2181'
+            - name: ZOOKEEPER_TICK_TIME
+              value: '2000'
+          volumeMounts:
+            - name: zookeeper-data
+              mountPath: /var/lib/zookeeper/data
+  volumeClaimTemplates:
+    - metadata:
+        name: zookeeper-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+spec:
+  ports:
+    - name: kafka-9092
+      port: 9092
+      targetPort: 9092
+    - name: kafka-29092
+      port: 29092
+      targetPort: 29092
+  selector:
+    app: kafka
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+spec:
+  serviceName: kafka
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: confluentinc/cp-kafka:7.4.0
+          ports:
+            - containerPort: 9092
+            - containerPort: 29092
+          env:
+            - name: KAFKA_BROKER_ID
+              value: '1'
+            - name: KAFKA_ZOOKEEPER_CONNECT
+              value: 'zookeeper:2181'
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: 'PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: '1'
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: '1'
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: '1'
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: '0'
+            - name: KAFKA_JMX_PORT
+              value: '9101'
+            - name: KAFKA_JMX_HOSTNAME
+              value: 'localhost'
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: 'true'
+            - name: KAFKA_DELETE_TOPIC_ENABLE
+              value: 'true'
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 2Gi
+---
+# Core Database
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-db
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: core-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: core-db
+spec:
+  serviceName: core-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: core-db
+  template:
+    metadata:
+      labels:
+        app: core-db
+    spec:
+      containers:
+        - name: core-db
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: puchi_core
+            - name: POSTGRES_USER
+              value: puchi_user
+            - name: POSTGRES_PASSWORD
+              value: puchi_password
+          volumeMounts:
+            - name: core-db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: core-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 2Gi
+---
+# Support Database
+apiVersion: v1
+kind: Service
+metadata:
+  name: support-db
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: support-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: support-db
+spec:
+  serviceName: support-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: support-db
+  template:
+    metadata:
+      labels:
+        app: support-db
+    spec:
+      containers:
+        - name: support-db
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: puchi_support
+            - name: POSTGRES_USER
+              value: puchi_user
+            - name: POSTGRES_PASSWORD
+              value: puchi_password
+          volumeMounts:
+            - name: support-db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: support-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 2Gi
+---
+# Feature Database
+apiVersion: v1
+kind: Service
+metadata:
+  name: feature-db
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: feature-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: feature-db
+spec:
+  serviceName: feature-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feature-db
+  template:
+    metadata:
+      labels:
+        app: feature-db
+    spec:
+      containers:
+        - name: feature-db
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: puchi_feature
+            - name: POSTGRES_USER
+              value: puchi_user
+            - name: POSTGRES_PASSWORD
+              value: puchi_password
+          volumeMounts:
+            - name: feature-db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: feature-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 2Gi

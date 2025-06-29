@@ -1,0 +1,342 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: hoanit/api-gateway:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: KAFKA_BROKERS
+              value: 'kafka:29092'
+            - name: PORT
+              value: '8000'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: hoanit/user-service:latest
+          ports:
+            - containerPort: 8001
+          env:
+            - name: KAFKA_BROKERS
+              value: 'kafka:29092'
+            - name: PORT
+              value: '8001'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+spec:
+  selector:
+    app: user-service
+  ports:
+    - protocol: TCP
+      port: 8001
+      targetPort: 8001
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lesson-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lesson-service
+  template:
+    metadata:
+      labels:
+        app: lesson-service
+    spec:
+      containers:
+        - name: lesson-service
+          image: lesson-service:latest
+          ports:
+            - containerPort: 8002
+          env:
+            - name: KAFKA_BROKERS
+              value: 'kafka:29092'
+            - name: PORT
+              value: '8002'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lesson-service
+spec:
+  selector:
+    app: lesson-service
+  ports:
+    - protocol: TCP
+      port: 8002
+      targetPort: 8002
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: progress-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: progress-service
+  template:
+    metadata:
+      labels:
+        app: progress-service
+    spec:
+      containers:
+        - name: progress-service
+          image: progress-service:latest
+          ports:
+            - containerPort: 8003
+          env:
+            - name: KAFKA_BROKERS
+              value: 'kafka:29092'
+            - name: PORT
+              value: '8003'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: progress-service
+spec:
+  selector:
+    app: progress-service
+  ports:
+    - protocol: TCP
+      port: 8003
+      targetPort: 8003
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-service
+  template:
+    metadata:
+      labels:
+        app: media-service
+    spec:
+      containers:
+        - name: media-service
+          image: media-service:latest
+          ports:
+            - containerPort: 8004
+          env:
+            - name: KAFKA_BROKERS
+              value: 'kafka:29092'
+            - name: PORT
+              value: '8004'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-service
+spec:
+  selector:
+    app: media-service
+  ports:
+    - protocol: TCP
+      port: 8004
+      targetPort: 8004
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: notification-service:latest
+          ports:
+            - containerPort: 8005
+          env:
+            - name: KAFKA_BROKERS
+              value: 'kafka:29092'
+            - name: PORT
+              value: '8005'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - protocol: TCP
+      port: 8005
+      targetPort: 8005
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vocabulary-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vocabulary-service
+  template:
+    metadata:
+      labels:
+        app: vocabulary-service
+    spec:
+      containers:
+        - name: vocabulary-service
+          image: vocabulary-service:latest
+          ports:
+            - containerPort: 8006
+          env:
+            - name: KAFKA_BROKERS
+              value: 'kafka:29092'
+            - name: PORT
+              value: '8006'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vocabulary-service
+spec:
+  selector:
+    app: vocabulary-service
+  ports:
+    - protocol: TCP
+      port: 8006
+      targetPort: 8006
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quiz-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: quiz-service
+  template:
+    metadata:
+      labels:
+        app: quiz-service
+    spec:
+      containers:
+        - name: quiz-service
+          image: quiz-service:latest
+          ports:
+            - containerPort: 8007
+          env:
+            - name: KAFKA_BROKERS
+              value: 'kafka:29092'
+            - name: PORT
+              value: '8007'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quiz-service
+spec:
+  selector:
+    app: quiz-service
+  ports:
+    - protocol: TCP
+      port: 8007
+      targetPort: 8007
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      containers:
+        - name: analytics-service
+          image: analytics-service:latest
+          ports:
+            - containerPort: 8008
+          env:
+            - name: KAFKA_BROKERS
+              value: 'kafka:29092'
+            - name: PORT
+              value: '8008'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+spec:
+  selector:
+    app: analytics-service
+  ports:
+    - protocol: TCP
+      port: 8008
+      targetPort: 8008
+  type: ClusterIP

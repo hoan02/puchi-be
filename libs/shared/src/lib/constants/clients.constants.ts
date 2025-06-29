@@ -1,5 +1,7 @@
 import { KafkaOptions, Transport } from '@nestjs/microservices';
 
+const brokers = (process.env['KAFKA_BROKERS'] || 'kafka:29092').split(',');
+
 export const CLIENT_KAFKA_NAMES = {
   API_GATEWAY_CLIENT: 'API_GATEWAY_CLIENT',
   USER_CLIENT: 'USER_CLIENT',
@@ -16,7 +18,7 @@ export const API_GATEWAY_CLIENT_KAFKA_OPTIONS: KafkaOptions = {
   transport: Transport.KAFKA,
   options: {
     client: {
-      brokers: ['localhost:9092'],
+      brokers,
     },
   },
 };
@@ -25,7 +27,7 @@ export const USER_CLIENT_KAFKA_OPTIONS: KafkaOptions = {
   transport: Transport.KAFKA,
   options: {
     client: {
-      brokers: ['localhost:9092'],
+      brokers,
     },
     consumer: {
       groupId: 'user-service-group',
@@ -38,7 +40,7 @@ export const LESSON_CLIENT_KAFKA_OPTIONS: KafkaOptions = {
   transport: Transport.KAFKA,
   options: {
     client: {
-      brokers: ['localhost:9092'],
+      brokers,
     },
     consumer: {
       groupId: 'lesson-service-group',
@@ -51,7 +53,7 @@ export const PROGRESS_CLIENT_KAFKA_OPTIONS: KafkaOptions = {
   transport: Transport.KAFKA,
   options: {
     client: {
-      brokers: ['localhost:9092'],
+      brokers,
     },
     consumer: {
       groupId: 'progress-service-group',
@@ -64,7 +66,7 @@ export const MEDIA_CLIENT_KAFKA_OPTIONS: KafkaOptions = {
   transport: Transport.KAFKA,
   options: {
     client: {
-      brokers: ['localhost:9092'],
+      brokers,
     },
     consumer: {
       groupId: 'media-service-group',
@@ -77,7 +79,7 @@ export const NOTIFICATION_CLIENT_KAFKA_OPTIONS: KafkaOptions = {
   transport: Transport.KAFKA,
   options: {
     client: {
-      brokers: ['localhost:9092'],
+      brokers,
     },
     consumer: {
       groupId: 'notification-service-group',
@@ -90,7 +92,7 @@ export const VOCABULARY_CLIENT_KAFKA_OPTIONS: KafkaOptions = {
   transport: Transport.KAFKA,
   options: {
     client: {
-      brokers: ['localhost:9092'],
+      brokers,
     },
     consumer: {
       groupId: 'vocabulary-service-group',
@@ -103,7 +105,7 @@ export const QUIZ_CLIENT_KAFKA_OPTIONS: KafkaOptions = {
   transport: Transport.KAFKA,
   options: {
     client: {
-      brokers: ['localhost:9092'],
+      brokers,
     },
     consumer: {
       groupId: 'quiz-service-group',
@@ -116,7 +118,7 @@ export const ANALYTICS_CLIENT_KAFKA_OPTIONS: KafkaOptions = {
   transport: Transport.KAFKA,
   options: {
     client: {
-      brokers: ['localhost:9092'],
+      brokers,
     },
     consumer: {
       groupId: 'analytics-service-group',
