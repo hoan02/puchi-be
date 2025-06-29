@@ -6,7 +6,6 @@ import {
   Public,
   CLIENT_KAFKA_NAMES,
   BaseController,
-  ServiceClient
 } from '@puchi-be/shared';
 import { ClientKafka } from '@nestjs/microservices/client';
 

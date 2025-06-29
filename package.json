@@ -1,10 +1,10 @@
 {
   "name": "@puchi-be/source",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "license": "UNLICENSED",
   "author": {
-    "name": "[Tên của bạn]",
-    "email": "[Email của bạn]"
+    "name": "HoanIT",
+    "email": "lehoan.dev@gmail.com"
   },
   "description": "Modern microservices backend for language learning application",
   "keywords": [
@@ -16,11 +16,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/[username]/puchi-be.git"
+    "url": "https://github.com/hoan02/puchi-be.git"
   },
-  "homepage": "https://github.com/[username]/puchi-be#readme",
+  "homepage": "https://github.com/hoan02/puchi-be#readme",
   "bugs": {
-    "url": "https://github.com/[username]/puchi-be/issues"
+    "url": "https://github.com/hoan02/puchi-be/issues"
   },
   "scripts": {
     "dev": "nx run-many --target=serve --projects=api-gateway,user-service,lesson-service,progress-service,media-service,notification-service,vocabulary-service,quiz-service,analytics-service --parallel",

@@ -1,6 +1,6 @@
-import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { AppService } from './app.service';
-import { Public, BaseController, ServiceClient } from '@puchi-be/shared';
+import { Public, BaseController } from '@puchi-be/shared';
 import { ClientKafka } from '@nestjs/microservices/client';
 import { CLIENT_KAFKA_NAMES } from '@puchi-be/shared';
 

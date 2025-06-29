@@ -1,10 +1,8 @@
 import {
-  Controller,
   OnModuleInit,
   OnModuleDestroy,
   Get,
   Logger,
-  Inject
 } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices/client';
 import { HealthChecker, ServiceClient } from '../utils';

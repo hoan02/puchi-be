@@ -7,7 +7,6 @@ import {
   CLIENT_KAFKA_NAMES,
   LessonCreatedEvent,
   BaseController,
-  ServiceClient
 } from '@puchi-be/shared';
 
 @Controller()

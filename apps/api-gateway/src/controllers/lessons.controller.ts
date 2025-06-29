@@ -6,7 +6,6 @@ import {
   Public,
   CLIENT_KAFKA_NAMES,
   BaseController,
-  ServiceClient
 } from '@puchi-be/shared';
 import { CreateLessonRequestDto, ApiResponseDto, LessonsListResponseDto, LessonResponseDto } from '../dto/lesson.dto';
 import { GetLessonsEvent, GetLessonByIdEvent, GetUserProgressEvent } from '../events/lesson.events';
