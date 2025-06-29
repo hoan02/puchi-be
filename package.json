@@ -1,7 +1,27 @@
 {
   "name": "@puchi-be/source",
   "version": "0.0.0",
-  "license": "MIT",
+  "license": "UNLICENSED",
+  "author": {
+    "name": "[Tên của bạn]",
+    "email": "[Email của bạn]"
+  },
+  "description": "Modern microservices backend for language learning application",
+  "keywords": [
+    "microservices",
+    "nestjs",
+    "kafka",
+    "typescript",
+    "language-learning"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/[username]/puchi-be.git"
+  },
+  "homepage": "https://github.com/[username]/puchi-be#readme",
+  "bugs": {
+    "url": "https://github.com/[username]/puchi-be/issues"
+  },
   "scripts": {
     "dev": "nx run-many --target=serve --projects=api-gateway,user-service,lesson-service,progress-service,media-service,notification-service,vocabulary-service,quiz-service,analytics-service --parallel",
     "dev:gateway": "nx serve api-gateway",
