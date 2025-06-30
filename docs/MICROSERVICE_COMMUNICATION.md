@@ -1,19 +1,56 @@
 # 🔄 Microservice Communication Architecture
 
-## Tổng quan
+## 📋 Tổng quan
 
-Dự án Puchi Backend sử dụng kiến trúc microservice với Kafka làm message broker. Các service giao tiếp với nhau thông qua:
+Dự án Puchi Backend sử dụng **hybrid communication pattern**:
 
-- **Request-Response Pattern**: Sử dụng `send()` với reply topics
-- **Event-Driven Pattern**: Sử dụng `emit()` cho async communication
-- **Circuit Breaker Pattern**: Đảm bảo fault tolerance
-- **Service Discovery**: Tự động khám phá và kết nối services
+- **HTTP/REST**: Client → API Gateway (External communication)
+- **Kafka**: API Gateway ↔ Microservices (Internal communication)
+- **Kafka Events**: Service-to-Service (Event-driven communication)
 
 ## 🏗️ Kiến trúc Communication
 
-### 1. Base Controller Pattern
+### 1. External Communication (HTTP/REST)
 
-Tất cả controllers kế thừa từ `BaseController` để có các tính năng:
+```
+Client Applications
+        │
+        ▼ HTTP/REST
+┌─────────────────┐
+│   API Gateway   │ ← DUY NHẤT có HTTP endpoints
+│   (Port 8000)   │
+└─────────────────┘
+```
+
+**HTTP Endpoints:**
+
+- `GET /api/health` - Health check
+- `GET /api/services/status` - Service status
+- `GET /api/lessons/*` - Lesson management
+- `GET /api/users/*` - User management
+- `GET /api/progress/*` - Progress tracking
+
+### 2. Internal Communication (Kafka)
+
+```
+API Gateway
+        │
+        ▼ Kafka
+┌─────────────────┐
+│   Kafka Broker  │ ← Tất cả services giao tiếp qua đây
+│   (Port 9092)   │
+└─────────────────┘
+        │
+        ▼ Kafka
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│  User Service   │ │ Lesson Service  │ │ Progress Service│
+│  (Kafka Only)   │ │  (Kafka Only)   │ │  (Kafka Only)   │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+## 🔧 Base Controller Pattern
+
+Tất cả controllers kế thừa từ `BaseController`:
 
 ```typescript
 export abstract class BaseController implements OnModuleInit, OnModuleDestroy {
@@ -21,29 +58,13 @@ export abstract class BaseController implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     await this.initializeServiceClients();
-    await this.subscribeReplyTopics(); // 🔑 Quan trọng!
+    await this.subscribeReplyTopics();
     await this.registerHealthCheck();
   }
 
-  protected async subscribeReplyTopics(): Promise<void> {
-    // Subscribe reply topics cho tất cả service clients
-  }
-}
-```
-
-### 2. Service Client với Circuit Breaker
-
-```typescript
-export class ServiceClient {
-  private circuitBreakers: Map<string, CircuitBreaker> = new Map();
-
-  async send<T = any>(pattern: string, data: any, options?: ServiceCallOptions): Promise<T> {
-    // Circuit breaker pattern với retry logic
-  }
-
-  async emit<T = any>(pattern: string, data: any, options?: ServiceCallOptions): Promise<T> {
-    // Event-driven communication
-  }
+  // Service communication methods
+  protected async sendToService(serviceName: string, pattern: string, data: any): Promise<any>;
+  protected async emitToService(serviceName: string, pattern: string, data: any): Promise<any>;
 }
 ```
 
@@ -61,59 +82,66 @@ export class ServiceClient {
 
 ### Event Topics
 
-| Event            | Topic            | Publisher   | Subscribers                       |
-| ---------------- | ---------------- | ----------- | --------------------------------- |
-| `lesson-created` | `lesson-created` | API Gateway | Lesson Service, Analytics Service |
-| `user-activity`  | `user-activity`  | API Gateway | User Service, Progress Service    |
+| Event             | Topic             | Publisher    | Subscribers                       |
+| ----------------- | ----------------- | ------------ | --------------------------------- |
+| `lesson-created`  | `lesson-events`   | API Gateway  | Lesson Service, Analytics Service |
+| `user-activity`   | `user-events`     | API Gateway  | User Service, Progress Service    |
+| `progress-update` | `progress-events` | Progress Svc | Analytics Service, User Service   |
 
 ## 🔧 Cách triển khai
 
-### 1. Khởi tạo Service Client
+### 1. API Gateway Controller
 
 ```typescript
-@Controller('users')
-export class UsersController extends BaseController {
+@Controller('lessons')
+export class LessonsController extends BaseController {
   constructor(
-    @Inject(CLIENT_KAFKA_NAMES.USER_CLIENT)
-    private readonly userClient: ClientKafka,
+    @Inject(CLIENT_KAFKA_NAMES.LESSON_CLIENT)
+    private readonly lessonClient: ClientKafka,
   ) {
-    super('UsersController');
+    super('LessonsController', '1.0.0', 8000);
   }
 
   async initializeServiceClients(): Promise<void> {
-    this.registerServiceClient('user-service', this.userClient);
+    this.registerServiceClient('lesson-service', this.lessonClient);
+  }
+
+  @Get('list')
+  async getLessons() {
+    // HTTP endpoint → Kafka → Lesson Service
+    const lessons = await this.sendToService('lesson-service', 'get-lessons', {});
+    return { data: lessons, timestamp: new Date().toISOString() };
   }
 }
 ```
 
-### 2. Subscribe Reply Topics
+### 2. Microservice (Kafka Only)
 
 ```typescript
-protected async subscribeServiceReplyTopics(serviceName: string, client: ClientKafka): Promise<void> {
-  if (serviceName === 'user-service') {
-    // Subscribe reply topics cho user service
-    client.subscribeToResponseOf('get-user-profile');
-    client.subscribeToResponseOf('get-public-info');
-    await client.connect();
+// apps/lesson-service/src/main.ts
+const app = await NestFactory.createMicroservice(AppModule, LESSON_CLIENT_KAFKA_OPTIONS);
+await app.listen(); // Chỉ Kafka, không có HTTP server
+
+// apps/lesson-service/src/app/app.controller.ts
+@Controller()
+export class AppController extends BaseController {
+  @MessagePattern('get-lessons')
+  async getLessons(data: any) {
+    // Xử lý request từ API Gateway
+    return { lessons: [] };
   }
 }
 ```
 
-### 3. Gọi Service
+### 3. Service-to-Service Communication
 
 ```typescript
-@Get('profile')
-async getProfile(@CurrentUser() user: UserAuthPayload) {
-  const event: GetUserProfileEvent = { userId: user.id };
-
-  // Sử dụng ServiceClient với circuit breaker
-  const profile = await this.sendToService('user-service', 'get-user-profile', event, {
-    timeout: 10000,
-    retries: 2
-  });
-
-  return { data: profile, timestamp: new Date().toISOString() };
-}
+// Service A gọi Service B qua Kafka
+await this.emitToService('analytics-service', 'lesson-completed', {
+  userId: user.id,
+  lessonId: lesson.id,
+  completedAt: new Date(),
+});
 ```
 
 ## 🛡️ Fault Tolerance
@@ -141,7 +169,7 @@ try {
   const data = await this.sendToService('user-service', 'get-user-profile', event);
   return data;
 } catch (error) {
-  // Fallback data
+  // Fallback data khi service fail
   return {
     id: user.id,
     email: 'fallback@example.com',
@@ -155,9 +183,9 @@ try {
 
 ### Health Check Endpoints
 
-- `GET /health` - Health status
-- `GET /info` - Service information
-- `GET /circuit-breakers` - Circuit breaker states
+- `GET /api/health` - Health status với dependencies
+- `GET /api/services/status` - All services status
+- `GET /api/circuit-breakers` - Circuit breaker states
 
 ### Metrics
 
@@ -178,17 +206,14 @@ try {
 ### Manual Testing
 
 ```bash
-# Test health check
-curl http://localhost:8000/health
+# Test API Gateway (HTTP)
+curl http://localhost:8000/api/health
+curl http://localhost:8000/api/users/public-info
+curl http://localhost:8000/api/lessons/public-list
+curl http://localhost:8000/api/progress/public-stats
 
-# Test user service
-curl http://localhost:8000/users/public-info
-
-# Test lesson service
-curl http://localhost:8000/lessons/public-list
-
-# Test progress service
-curl http://localhost:8000/progress/public-stats
+# Test Kafka communication (internal)
+# Các services không expose HTTP endpoints
 ```
 
 ## 🔍 Debugging
@@ -197,28 +222,28 @@ curl http://localhost:8000/progress/public-stats
 
 ```typescript
 // ServiceClient logs
-[ServiceClient] [INFO] Sending get-user-profile to user-service (attempt 1/2)
+[ServiceClient] [INFO] Sending get-user-profile to user-service (attempt 1/3)
 [ServiceClient] [ERROR] Error sending get-user-profile: Connection timeout
 [ServiceClient] [WARN] Attempt 1 failed for get-user-profile: Connection timeout
 ```
 
 ### Common Issues
 
-1. **Reply Topic Not Subscribed**
-
-   ```
-   Error: The client consumer did not subscribe to the corresponding reply topic
-   ```
-
-   **Solution**: Đảm bảo gọi `subscribeToResponseOf()` trong `subscribeServiceReplyTopics()`
-
-2. **Kafka Connection Failed**
+1. **Kafka Connection Failed**
 
    ```
    Error: Connection to Kafka broker failed
    ```
 
    **Solution**: Kiểm tra Kafka broker đang chạy
+
+2. **Reply Topic Not Subscribed**
+
+   ```
+   Error: The client consumer did not subscribe to the corresponding reply topic
+   ```
+
+   **Solution**: Đảm bảo gọi `subscribeToResponseOf()` trong `subscribeServiceReplyTopics()`
 
 3. **Circuit Breaker Open**
    ```
@@ -265,18 +290,6 @@ const criticalServiceOptions = {
 };
 ```
 
-### 4. Logging
-
-```typescript
-// Structured logging
-this.logger.log('Service call initiated', {
-  service: 'user-service',
-  pattern: 'get-user-profile',
-  userId: user.id,
-  timestamp: new Date().toISOString(),
-});
-```
-
 ## 📈 Performance Optimization
 
 ### 1. Connection Pooling
@@ -301,13 +314,13 @@ this.logger.log('Service call initiated', {
 
 ### 1. Authentication
 
-- Validate user tokens
+- Validate user tokens tại API Gateway
 - Implement service-to-service authentication
 - Use secure communication channels
 
 ### 2. Authorization
 
-- Check user permissions
+- Check user permissions tại API Gateway
 - Implement role-based access control
 - Validate service permissions
 
@@ -322,4 +335,4 @@ this.logger.log('Service call initiated', {
 - [NestJS Microservices](https://docs.nestjs.com/microservices/basics)
 - [Kafka Documentation](https://kafka.apache.org/documentation/)
 - [Circuit Breaker Pattern](https://martinfowler.com/bliki/CircuitBreaker.html)
-- [Service Discovery](https://microservices.io/patterns/service-registry.html)
+- [API Gateway Pattern](https://microservices.io/patterns/apigateway.html)

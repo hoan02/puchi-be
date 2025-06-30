@@ -1,31 +1,68 @@
 # Kafka Implementation Guide
 
-## Tổng quan
+## 📋 Tổng quan
 
-Tài liệu này mô tả việc triển khai Kafka cho dự án Puchi-be.
+Tài liệu này mô tả việc triển khai Kafka cho dự án Puchi Backend với kiến trúc **API Gateway + Kafka-only Microservices**.
 
-## Lý do sử dụng Kafka
+## 🎯 Lý do sử dụng Kafka
 
-1. **Event Streaming**: Kafka phù hợp cho event-driven architecture
-2. **ML/AI Pipeline**: Hỗ trợ tốt cho machine learning workflows
-3. **Scalability**: Xử lý được lượng events lớn hơn
+1. **Event-Driven Architecture**: Loose coupling giữa services
+2. **Scalability**: Xử lý được lượng events lớn
+3. **Fault Tolerance**: Circuit breaker và retry mechanisms
 4. **Event Retention**: Lưu trữ events lâu dài cho analytics
 5. **Replay Capability**: Có thể replay events để rebuild data
+6. **Performance**: Async processing cho better throughput
 
-## Kiến trúc hiện tại
+## 🏗️ Kiến trúc hiện tại
+
+### Communication Flow
+
+```
+Client Apps → HTTP → API Gateway → Kafka → Microservices
+                ↑                    ↓
+            (External)           (Internal)
+```
+
+### Service Architecture
+
+| Service              | Transport | Port | HTTP Endpoints | Kafka Topics |
+| -------------------- | --------- | ---- | -------------- | ------------ |
+| API Gateway          | HTTP      | 8000 | ✅ Có          | Producer     |
+| User Service         | Kafka     | 8001 | ❌ Không       | Consumer     |
+| Lesson Service       | Kafka     | 8002 | ❌ Không       | Consumer     |
+| Progress Service     | Kafka     | 8003 | ❌ Không       | Consumer     |
+| Media Service        | Kafka     | 8004 | ❌ Không       | Consumer     |
+| Notification Service | Kafka     | 8005 | ❌ Không       | Consumer     |
+| Vocabulary Service   | Kafka     | 8006 | ❌ Không       | Consumer     |
+| Quiz Service         | Kafka     | 8007 | ❌ Không       | Consumer     |
+| Analytics Service    | Kafka     | 8008 | ❌ Không       | Consumer     |
 
 ### Kafka Topics
 
+#### Request-Response Topics
+
 ```
-user-learning-events     # Events liên quan đến học tập
-lesson-events           # Events liên quan đến bài học
-progress-events         # Events liên quan đến tiến độ
-analytics-events        # Events cho analytics
-user-events             # Events liên quan đến user
-media-events            # Events liên quan đến media
-notification-events     # Events liên quan đến notification
-vocabulary-events       # Events liên quan đến từ vựng
-quiz-events             # Events liên quan đến quiz
+get-user-profile          # User profile requests
+get-user-profile.reply    # User profile responses
+get-lessons               # Lesson list requests
+get-lessons.reply         # Lesson list responses
+get-lesson-by-id          # Single lesson requests
+get-lesson-by-id.reply    # Single lesson responses
+get-user-progress         # Progress requests
+get-user-progress.reply   # Progress responses
+```
+
+#### Event Topics
+
+```
+user-events               # User-related events
+lesson-events             # Lesson-related events
+progress-events           # Progress-related events
+analytics-events          # Analytics events
+media-events              # Media-related events
+notification-events       # Notification events
+vocabulary-events         # Vocabulary events
+quiz-events               # Quiz-related events
 ```
 
 ### Consumer Groups
@@ -41,7 +78,7 @@ quiz-service-group
 analytics-service-group
 ```
 
-## Setup và Deployment
+## 🚀 Setup và Deployment
 
 ### Phase 1: Setup Infrastructure
 
@@ -54,7 +91,11 @@ analytics-service-group
 2. **Start Kafka infrastructure**
 
    ```bash
-   npm run kafka:up
+   # Windows
+   .\scripts\start-kafka.ps1
+
+   # Linux/Mac
+   ./scripts/start-kafka.sh
    ```
 
 3. **Tạo Kafka topics**
@@ -66,28 +107,55 @@ analytics-service-group
 
 ```bash
 # Start all services
-npm run migrate:kafka
+npm run start:dev
 
 # Hoặc start từng service
-npm run dev:analytics
-npm run dev:gateway
-npm run dev:core
-npm run dev:feature
+npm run dev:gateway    # API Gateway (HTTP + Kafka)
+npm run dev:user       # User Service (Kafka only)
+npm run dev:lesson     # Lesson Service (Kafka only)
+npm run dev:progress   # Progress Service (Kafka only)
 ```
 
-## Services đã được migrate
+## 🔧 Service Implementation
 
-- ✅ **Analytics Service**: Sử dụng Kafka cho event processing
-- ✅ **API Gateway**: Producer cho user events
-- ✅ **User Service**: Consumer cho user events
-- ✅ **Lesson Service**: Consumer cho lesson events
-- ✅ **Progress Service**: Consumer cho progress events
-- ✅ **Media Service**: Consumer cho media events
-- ✅ **Notification Service**: Consumer cho notification events
-- ✅ **Vocabulary Service**: Consumer cho vocabulary events
-- ✅ **Quiz Service**: Consumer cho quiz events
+### 1. API Gateway (HTTP + Kafka Producer)
 
-## Monitoring và Debugging
+```typescript
+// apps/api-gateway/src/main.ts
+const app = await NestFactory.create(AppModule); // HTTP server
+await app.listen(8000);
+
+// apps/api-gateway/src/controllers/lessons.controller.ts
+@Controller('lessons')
+export class LessonsController extends BaseController {
+  @Get('list')
+  async getLessons() {
+    // HTTP endpoint → Kafka → Lesson Service
+    const lessons = await this.sendToService('lesson-service', 'get-lessons', {});
+    return { data: lessons };
+  }
+}
+```
+
+### 2. Microservices (Kafka Only)
+
+```typescript
+// apps/lesson-service/src/main.ts
+const app = await NestFactory.createMicroservice(AppModule, LESSON_CLIENT_KAFKA_OPTIONS);
+await app.listen(); // Chỉ Kafka, không có HTTP server
+
+// apps/lesson-service/src/app/app.controller.ts
+@Controller()
+export class AppController extends BaseController {
+  @MessagePattern('get-lessons')
+  async getLessons(data: any) {
+    // Xử lý request từ API Gateway
+    return { lessons: [] };
+  }
+}
+```
+
+## 📊 Monitoring và Debugging
 
 ### Kafka UI
 
@@ -97,11 +165,11 @@ npm run dev:feature
 ### Health Checks
 
 ```bash
-# Analytics Service
-curl http://localhost:8008/health
+# API Gateway (HTTP)
+curl http://localhost:8000/api/health
 
-# API Gateway
-curl http://localhost:8000/health
+# Service status (HTTP)
+curl http://localhost:8000/api/services/status
 ```
 
 ### Logs
@@ -114,7 +182,7 @@ docker-compose logs kafka
 npm run docker:logs
 ```
 
-## Performance Metrics
+## 📈 Performance Metrics
 
 ### Current Performance (Kafka)
 
@@ -123,7 +191,16 @@ npm run docker:logs
 - Retention: 30 days (configurable)
 - Consumer Groups: Parallel processing
 
-## Troubleshooting
+### HTTP vs Kafka Performance
+
+| Metric          | HTTP/REST  | Kafka     |
+| --------------- | ---------- | --------- |
+| Latency         | ~50ms      | ~10ms     |
+| Throughput      | ~10K req/s | ~1M msg/s |
+| Scalability     | Limited    | High      |
+| Fault Tolerance | Basic      | Advanced  |
+
+## 🔍 Troubleshooting
 
 ### Common Issues
 
@@ -137,7 +214,7 @@ npm run docker:logs
 2. **Topics not created**
 
    ```bash
-   docker exec kafka kafka-topics --create --topic user-learning-events --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
+   docker exec kafka kafka-topics --create --topic user-events --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
    ```
 
 3. **Consumer group issues**
@@ -152,22 +229,49 @@ npm run docker:logs
 npm run kafka:topics
 
 # Check consumer groups
-docker exec kafka kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group analytics-service-group
+docker exec kafka kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group user-service-group
 
 # Monitor messages
-docker exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic user-learning-events --from-beginning
+docker exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic user-events --from-beginning
 ```
 
-## Next Steps
+## 🎯 Best Practices
+
+### 1. **API Gateway Pattern** ✅
+
+- Single entry point cho client requests
+- Centralized authentication
+- Request routing và load balancing
+
+### 2. **Kafka-only Microservices** ✅
+
+- Loose coupling
+- Better scalability
+- Fault tolerance với circuit breaker
+
+### 3. **Event-Driven Architecture** ✅
+
+- Async processing
+- Event sourcing
+- Audit trail
+
+### 4. **Circuit Breaker Pattern** ✅
+
+- Automatic failure detection
+- Fallback mechanisms
+- Service isolation
+
+## 🔮 Next Steps
 
 1. **Implement ML/AI pipelines**
-2. **Add monitoring and alerting**
+2. **Add monitoring và alerting**
 3. **Performance optimization**
 4. **Production deployment**
 5. **Event schema evolution**
 
-## References
+## 📚 References
 
 - [Kafka Documentation](https://kafka.apache.org/documentation/)
 - [NestJS Microservices](https://docs.nestjs.com/microservices/kafka)
 - [KafkaJS Documentation](https://kafka.js.org/)
+- [API Gateway Pattern](https://microservices.io/patterns/apigateway.html)

@@ -1,31 +1,38 @@
 # 🚀 Puchi Backend - Modern Microservices Architecture
 
+> **Đây là backend cho dự án [Puchi](https://github.com/hoan02/puchi) - nền tảng học tiếng Việt hiện đại tại [puchi.io.vn](https://puchi.io.vn).**
+>
+> Backend này cung cấp toàn bộ API, authentication, quản lý dữ liệu, và các microservices cho ứng dụng Puchi.
+
 ## 📋 Tổng quan
 
 Puchi Backend là một hệ thống microservices hiện đại được xây dựng với NestJS, sử dụng kiến trúc event-driven và fault-tolerant patterns. Hệ thống được thiết kế để hỗ trợ ứng dụng học ngôn ngữ với khả năng mở rộng cao và độ tin cậy tốt.
 
-### 🏗️ Kiến trúc
+### 🏗️ Kiến trúc tổng thể
 
-- **Microservices Pattern**: 9 services độc lập, mỗi service có trách nhiệm riêng biệt
-- **Event-Driven Architecture**: Sử dụng Kafka làm message broker
-- **API Gateway**: Điểm vào duy nhất cho tất cả client requests
-- **Circuit Breaker Pattern**: Đảm bảo fault tolerance
-- **Service Discovery**: Tự động khám phá và kết nối services
-- **Health Monitoring**: Theo dõi sức khỏe hệ thống real-time
+```
+Client Apps → HTTP → API Gateway (Port 8000) → Kafka → Microservices (Kafka only)
+```
+
+- **API Gateway**: Entry point duy nhất cho tất cả client requests (HTTP/REST)
+- **Kafka**: Message broker cho toàn bộ giao tiếp giữa các service
+- **Microservices**: Chỉ giao tiếp nội bộ qua Kafka, không expose HTTP endpoint
+- **Circuit Breaker**: Đảm bảo fault tolerance
+- **Health Monitoring**: Theo dõi sức khỏe hệ thống real-time tại API Gateway
 
 ### 🔧 Services
 
-| Service              | Port | Mô tả                                     |
-| -------------------- | ---- | ----------------------------------------- |
-| API Gateway          | 8000 | Điểm vào chính, routing và authentication |
-| User Service         | 8001 | Quản lý người dùng và authentication      |
-| Lesson Service       | 8002 | Quản lý bài học và nội dung               |
-| Progress Service     | 8003 | Theo dõi tiến độ học tập                  |
-| Media Service        | 8004 | Quản lý file media (audio, video, image)  |
-| Notification Service | 8005 | Gửi thông báo real-time                   |
-| Vocabulary Service   | 8006 | Quản lý từ vựng và flashcard              |
-| Quiz Service         | 8007 | Hệ thống câu hỏi và đánh giá              |
-| Analytics Service    | 8008 | Phân tích dữ liệu và báo cáo              |
+| Service              | Port | Transport | HTTP Endpoints | Mô tả                                     |
+| -------------------- | ---- | --------- | -------------- | ----------------------------------------- |
+| API Gateway          | 8000 | HTTP      | ✅             | Điểm vào chính, routing và authentication |
+| User Service         | 8001 | Kafka     | ❌             | Quản lý người dùng và authentication      |
+| Lesson Service       | 8002 | Kafka     | ❌             | Quản lý bài học và nội dung               |
+| Progress Service     | 8003 | Kafka     | ❌             | Theo dõi tiến độ học tập                  |
+| Media Service        | 8004 | Kafka     | ❌             | Quản lý file media (audio, video, image)  |
+| Notification Service | 8005 | Kafka     | ❌             | Gửi thông báo real-time                   |
+| Vocabulary Service   | 8006 | Kafka     | ❌             | Quản lý từ vựng và flashcard              |
+| Quiz Service         | 8007 | Kafka     | ❌             | Hệ thống câu hỏi và đánh giá              |
+| Analytics Service    | 8008 | Kafka     | ❌             | Phân tích dữ liệu và báo cáo              |
 
 ## 🚀 Khởi động hệ thống
 
@@ -70,20 +77,20 @@ npm run start:dev
 .\scripts\test-microservice-communication.ps1
 ```
 
-### Manual Testing
+### Manual Testing (qua API Gateway)
 
 ```bash
-# Health check
-curl http://localhost:8000/health
+# Health check (chỉ API Gateway)
+curl http://localhost:8000/api/health
 
-# User service
-curl http://localhost:8000/users/public-info
+# User service (qua API Gateway)
+curl http://localhost:8000/api/users/public-info
 
-# Lesson service
-curl http://localhost:8000/lessons/public-list
+# Lesson service (qua API Gateway)
+curl http://localhost:8000/api/lessons/public-list
 
-# Progress service
-curl http://localhost:8000/progress/public-stats
+# Progress service (qua API Gateway)
+curl http://localhost:8000/api/progress/public-stats
 ```
 
 ## 📚 Tài liệu
@@ -92,7 +99,6 @@ curl http://localhost:8000/progress/public-stats
 - [Controller Architecture](./docs/CONTROLLER_ARCHITECTURE.md) - Kiến trúc controller
 - [Microservice Communication](./docs/MICROSERVICE_COMMUNICATION.md) - Giao tiếp giữa services
 - [Kafka Setup](./docs/KAFKA.md) - Cấu hình Kafka
-- [Logging Guidelines](./docs/LOGGING_GUIDELINES.md) - Hướng dẫn logging
 
 ## 🔧 Development
 
@@ -120,7 +126,7 @@ Tất cả controllers kế thừa từ `BaseController` với các tính năng:
 
 - Service client management
 - Circuit breaker integration
-- Health check endpoints
+- Health check endpoints (chỉ ở API Gateway)
 - Automatic reply topic subscription
 - Lifecycle management
 
@@ -142,15 +148,17 @@ const result = await this.sendToService('user-service', 'get-user-profile', data
 
 #### 🔍 Health Monitoring
 
+- **Chỉ API Gateway expose các endpoint health/info/circuit-breakers**
+
 ```bash
 # Service health
-GET /health
+GET /api/health
 
 # Service info
-GET /info
+GET /api/info
 
 # Circuit breaker status
-GET /circuit-breakers
+GET /api/circuit-breakers
 ```
 
 ## 🚀 Deployment
@@ -177,15 +185,15 @@ docker-compose up -d
 
 ## 🔐 Security
 
-- **Authentication**: Clerk integration
-- **Authorization**: Role-based access control
+- **Authentication**: Clerk integration tại API Gateway
+- **Authorization**: Role-based access control tại API Gateway
 - **Data Protection**: Encryption và validation
-- **Service-to-Service**: Secure communication
+- **Service-to-Service**: Secure communication qua Kafka
 
 ## 📊 Monitoring
 
-- **Health Checks**: Real-time service health
-- **Circuit Breakers**: Fault tolerance monitoring
+- **Health Checks**: Real-time service health (API Gateway)
+- **Circuit Breakers**: Fault tolerance monitoring (API Gateway)
 - **Logging**: Structured logging với correlation IDs
 - **Metrics**: Performance và error tracking
 
