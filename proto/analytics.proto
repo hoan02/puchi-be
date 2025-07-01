@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package analytics;
+
+service AnalyticsService {
+  rpc TrackEvent (TrackEventRequest) returns (TrackEventResponse);
+}
+
+message TrackEventRequest {
+  string userId = 1;
+  string eventName = 2;
+  string eventData = 3;
+}
+
+message TrackEventResponse {
+  bool success = 1;
+  string error = 2;
+} 

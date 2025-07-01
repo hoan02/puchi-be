@@ -1,5 +1,9 @@
 import { BaseEvent } from './base.event';
 
+// ===================== USER EVENTS =====================
+// Các event này chỉ dùng cho event bất đồng bộ (Kafka)
+// Nếu service không dùng event qua Kafka thì không cần import file này
+
 export class UserRegisteredEvent extends BaseEvent {
   constructor(
     public readonly userId: string,

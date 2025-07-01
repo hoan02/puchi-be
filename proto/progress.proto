@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package progress;
+
+service ProgressService {
+  rpc GetUserProgress (GetUserProgressRequest) returns (UserProgressResponse);
+}
+
+message GetUserProgressRequest {
+  string userId = 1;
+}
+
+message UserProgressResponse {
+  string userId = 1;
+  int32 completedLessons = 2;
+  int32 totalLessons = 3;
+} 

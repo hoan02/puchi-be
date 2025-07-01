@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package quiz;
+
+service QuizService {
+  rpc GetQuizById (GetQuizByIdRequest) returns (QuizResponse);
+}
+
+message GetQuizByIdRequest {
+  string id = 1;
+  string userId = 2;
+}
+
+message QuizResponse {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  int32 totalQuestions = 4;
+  // Thêm các trường khác nếu cần
+} 

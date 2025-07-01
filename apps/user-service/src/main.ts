@@ -7,19 +7,29 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { join } from 'path';
 import { USER_CLIENT_KAFKA_OPTIONS } from '@puchi-be/shared';
 
 async function bootstrap() {
   const logger = new Logger('User Service');
 
-  // Tạo microservice app với Kafka transport
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    AppModule,
-    USER_CLIENT_KAFKA_OPTIONS,
-  );
+  // Khởi tạo gRPC microservice
+  const grpcApp = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+    transport: Transport.GRPC,
+    options: {
+      package: 'user',
+      protoPath: join(__dirname, '../../../proto/user.proto'),
+      url: '0.0.0.0:50051',
+    },
+  });
 
-  await app.listen();
-  logger.log('🚀 User Service Microservice is running with Kafka transport');
+  // Khởi tạo Kafka microservice
+  const kafkaApp = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, USER_CLIENT_KAFKA_OPTIONS);
+
+  // Lắng nghe cả hai
+  await Promise.all([grpcApp.listen(), kafkaApp.listen()]);
+
+  logger.log('🚀 User Service Microservice is running with both gRPC and Kafka transport');
 }
 
 bootstrap(); 

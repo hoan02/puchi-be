@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { MessagePattern, Payload, GrpcMethod } from '@nestjs/microservices';
 import { AppService } from './app.service';
 import { createLogger, logUserAction } from '@puchi-be/shared';
 
@@ -111,5 +111,21 @@ export class AppController {
     });
 
     return result;
+  }
+
+  @GrpcMethod('UserService', 'GetPublicInfo')
+  getPublicInfoGrpc(_: any, __: any) {
+    this.logger.info('Processing GetPublicInfo gRPC request');
+    return { info: 'This is public info from user-service' };
+  }
+
+  @GrpcMethod('UserService', 'GetUserProfile')
+  getUserProfileGrpc(data: { userId: string }) {
+    this.logger.info('Processing GetUserProfile gRPC request', { userId: data.userId });
+    return {
+      id: data.userId,
+      name: 'User Name',
+      email: `user${data.userId}@example.com`,
+    };
   }
 }

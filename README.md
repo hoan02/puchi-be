@@ -1,38 +1,88 @@
 # 🚀 Puchi Backend - Modern Microservices Architecture
 
-> **Đây là backend cho dự án [Puchi](https://github.com/hoan02/puchi) - nền tảng học tiếng Việt hiện đại tại [puchi.io.vn](https://puchi.io.vn).**
->
-> Backend này cung cấp toàn bộ API, authentication, quản lý dữ liệu, và các microservices cho ứng dụng Puchi.
+> **Backend cho dự án [Puchi](https://github.com/hoan02/puchi) - nền tảng học tiếng Việt hiện đại tại [puchi.io.vn](https://puchi.io.vn).**
 
-## 📋 Tổng quan
+## 📋 Tổng quan kiến trúc
 
-Puchi Backend là một hệ thống microservices hiện đại được xây dựng với NestJS, sử dụng kiến trúc event-driven và fault-tolerant patterns. Hệ thống được thiết kế để hỗ trợ ứng dụng học ngôn ngữ với khả năng mở rộng cao và độ tin cậy tốt.
+- **API Gateway**: Entry point duy nhất cho client (REST), xác thực, routing, tích hợp gRPC client tới các service.
+- **Các Microservice**: Giao tiếp nội bộ qua gRPC (sử dụng proto), chỉ expose gRPC endpoint.
+- **Kafka**: Dùng cho event bất đồng bộ (notification, logging, background jobs...).
+- **Database**: Mỗi service một database riêng biệt (PostgreSQL).
+- **Chuẩn hóa response**: Tất cả API trả về `{ statusCode, message, data, timestamp }`.
+- **Kubernetes/Docker**: Sẵn sàng cho production, tối ưu healthcheck, resource, scaling.
 
-### 🏗️ Kiến trúc tổng thể
+### Sơ đồ kiến trúc
 
 ```
-Client Apps → HTTP → API Gateway (Port 8000) → Kafka → Microservices (Kafka only)
+Client Apps → REST → API Gateway → gRPC → Microservices
+                                 ↘ Kafka (event async)
 ```
 
-- **API Gateway**: Entry point duy nhất cho tất cả client requests (HTTP/REST)
-- **Kafka**: Message broker cho toàn bộ giao tiếp giữa các service
-- **Microservices**: Chỉ giao tiếp nội bộ qua Kafka, không expose HTTP endpoint
-- **Circuit Breaker**: Đảm bảo fault tolerance
-- **Health Monitoring**: Theo dõi sức khỏe hệ thống real-time tại API Gateway
+## 🔄 Luồng đi từ Frontend & Mối quan hệ giữa các service
 
-### 🔧 Services
+### 1. Luồng request/response từ FE đến BE
 
-| Service              | Port | Transport | HTTP Endpoints | Mô tả                                     |
-| -------------------- | ---- | --------- | -------------- | ----------------------------------------- |
-| API Gateway          | 8000 | HTTP      | ✅             | Điểm vào chính, routing và authentication |
-| User Service         | 8001 | Kafka     | ❌             | Quản lý người dùng và authentication      |
-| Lesson Service       | 8002 | Kafka     | ❌             | Quản lý bài học và nội dung               |
-| Progress Service     | 8003 | Kafka     | ❌             | Theo dõi tiến độ học tập                  |
-| Media Service        | 8004 | Kafka     | ❌             | Quản lý file media (audio, video, image)  |
-| Notification Service | 8005 | Kafka     | ❌             | Gửi thông báo real-time                   |
-| Vocabulary Service   | 8006 | Kafka     | ❌             | Quản lý từ vựng và flashcard              |
-| Quiz Service         | 8007 | Kafka     | ❌             | Hệ thống câu hỏi và đánh giá              |
-| Analytics Service    | 8008 | Kafka     | ❌             | Phân tích dữ liệu và báo cáo              |
+```mermaid
+sequenceDiagram
+    participant FE as "Frontend (Web/App)"
+    participant GW as "API Gateway"
+    participant US as "User Service"
+    participant LS as "Lesson Service"
+    participant PS as "Progress Service"
+    participant NS as "Notification Service"
+    participant KAFKA as "Kafka (Event Bus)"
+
+    FE->>GW: Gửi HTTP request (REST, có Auth)
+    GW->>US: gRPC call (ví dụ: lấy profile)
+    GW->>LS: gRPC call (ví dụ: lấy danh sách bài học)
+    GW->>PS: gRPC call (ví dụ: lấy tiến độ)
+    GW->>NS: gRPC call (ví dụ: lấy thông báo)
+    US-->>GW: Trả về dữ liệu user
+    LS-->>GW: Trả về dữ liệu lesson
+    PS-->>GW: Trả về dữ liệu progress
+    NS-->>GW: Trả về dữ liệu notification
+    GW-->>FE: Trả về response chuẩn hóa (statusCode, message, data, timestamp)
+```
+
+### 2. Luồng event bất đồng bộ (Kafka)
+
+```mermaid
+sequenceDiagram
+    participant LS as "Lesson Service"
+    participant KAFKA as "Kafka"
+    participant NS as "Notification Service"
+    participant US as "User Service"
+    participant PS as "Progress Service"
+
+    LS->>KAFKA: Emit event (lesson-completed)
+    KAFKA->>NS: Notification Service consume event
+    KAFKA->>US: User Service consume event (nếu cần)
+    KAFKA->>PS: Progress Service consume event (nếu cần)
+    NS-->>KAFKA: Gửi notification cho user
+```
+
+### 3. Mối quan hệ giữa các service
+
+- **API Gateway**: Entry point duy nhất cho FE, giao tiếp với các service qua gRPC (ClientGrpc), không xử lý business logic, chỉ xác thực, routing, chuẩn hóa response.
+- **Các Microservice (User, Lesson, Progress, ...):** Chỉ expose gRPC endpoint, giao tiếp với nhau qua gRPC (sync) hoặc Kafka (async event), mỗi service quản lý database riêng, không truy cập chéo DB.
+- **Kafka**: Event bus trung gian cho các event bất đồng bộ. Notification Service, Progress Service, User Service, ... có thể subscribe các event cần thiết.
+- **Notification Service**: Chủ động lắng nghe các event từ Kafka (ví dụ: lesson-completed, user-registered) để gửi thông báo cho user.
+
+---
+
+## 🔧 Danh sách service
+
+| Service              | Port | Giao tiếp | REST Endpoint | gRPC | Kafka Event | Database        |
+| -------------------- | ---- | --------- | ------------- | ---- | ----------- | --------------- |
+| API Gateway          | 8000 | REST/gRPC | ✅            | ✅   | -           | -               |
+| User Service         | 8001 | gRPC      | -             | ✅   | ✅          | user-db         |
+| Lesson Service       | 8002 | gRPC      | -             | ✅   | ✅          | lesson-db       |
+| Progress Service     | 8003 | gRPC      | -             | ✅   | ✅          | progress-db     |
+| Media Service        | 8004 | gRPC      | -             | ✅   | ✅          | media-db        |
+| Notification Service | 8005 | gRPC      | -             | ✅   | ✅          | notification-db |
+| Vocabulary Service   | 8006 | gRPC      | -             | ✅   | ✅          | vocabulary-db   |
+| Quiz Service         | 8007 | gRPC      | -             | ✅   | ✅          | quiz-db         |
+| Analytics Service    | 8008 | gRPC      | -             | ✅   | ✅          | analytics-db    |
 
 ## 🚀 Khởi động hệ thống
 
@@ -42,187 +92,104 @@ Client Apps → HTTP → API Gateway (Port 8000) → Kafka → Microservices (Ka
 npm install
 ```
 
-### 2. Khởi động Kafka
+### 2. Cấu hình biến môi trường
+
+Tạo file `.env.local` hoặc copy từ `env.local.example.txt` và chỉnh sửa thông tin kết nối DB, Kafka, gRPC endpoint cho từng service.
+
+### 3. Khởi động Docker (Kafka, Postgres, Kafka UI...)
 
 ```bash
-# Windows
-.\scripts\start-kafka.ps1
-
-# Linux/Mac
-./scripts/start-kafka.sh
+docker-compose up -d
 ```
 
-### 3. Build toàn bộ services
+### 4. Migrate database cho từng service (ví dụ user-service)
+
+```bash
+npx prisma migrate deploy --schema=apps/user-service/prisma/schema.prisma
+npx prisma generate --schema=apps/user-service/prisma/schema.prisma
+```
+
+### 5. Build toàn bộ services
 
 ```bash
 npm run build
 ```
 
-### 4. Khởi động tất cả services
+### 6. Khởi động từng service (dev)
 
 ```bash
-# Sử dụng script tự động
-.\scripts\start-all-services.ps1
-
-# Hoặc chạy thủ công
-npm run start:dev
+nx serve api-gateway
+nx serve user-service
+nx serve lesson-service
+# ... các service khác
 ```
 
 ## 🧪 Testing
 
-### Test Communication
+- **Health check:**
+  ```
+  curl http://localhost:8000/api/health
+  ```
+- **Test REST endpoint (qua API Gateway):**
+  ```
+  curl http://localhost:8000/api/lessons/list
+  curl http://localhost:8000/api/users/profile
+  ```
+- **Test gRPC:**  
+  Sử dụng các file proto trong thư mục `/proto` để test với Postman hoặc grpcurl.
 
-```bash
-# Test microservice communication
-.\scripts\test-microservice-communication.ps1
-```
-
-### Manual Testing (qua API Gateway)
-
-```bash
-# Health check (chỉ API Gateway)
-curl http://localhost:8000/api/health
-
-# User service (qua API Gateway)
-curl http://localhost:8000/api/users/public-info
-
-# Lesson service (qua API Gateway)
-curl http://localhost:8000/api/lessons/public-list
-
-# Progress service (qua API Gateway)
-curl http://localhost:8000/api/progress/public-stats
-```
-
-## 📚 Tài liệu
-
-- [Microservice Architecture](./docs/MICROSERVICE_ARCHITECTURE.md) - Kiến trúc tổng thể
-- [Controller Architecture](./docs/CONTROLLER_ARCHITECTURE.md) - Kiến trúc controller
-- [Microservice Communication](./docs/MICROSERVICE_COMMUNICATION.md) - Giao tiếp giữa services
-- [Kafka Setup](./docs/KAFKA.md) - Cấu hình Kafka
-
-## 🔧 Development
-
-### Cấu trúc Project
+## 🏗️ Cấu trúc project
 
 ```
 puchi-be/
-├── apps/                    # Microservices
-│   ├── api-gateway/        # API Gateway
-│   ├── user-service/       # User Management
-│   ├── lesson-service/     # Lesson Management
-│   └── ...                 # Other services
-├── libs/                   # Shared libraries
-│   ├── shared/            # Common utilities
-│   └── database/          # Database utilities
-├── docs/                  # Documentation
-└── scripts/               # Utility scripts
+├── apps/                    # Microservices (api-gateway, user-service, ...)
+├── libs/                    # Shared libraries (auth, utils, database, ...)
+├── proto/                   # gRPC proto definitions
+├── scripts/                 # Script build, deploy, test
+├── docker-compose.yml       # Docker infra (Kafka, Postgres, ...)
+└── README.md
 ```
 
-### Key Features
+## ⚡ Công nghệ & Best Practice
 
-#### 🔄 Base Controller Pattern
+- **NestJS**: Framework chính cho cả API Gateway và các service.
+- **gRPC**: Giao tiếp nội bộ giữa các service (proto chuẩn hóa).
+- **Kafka**: Event bất đồng bộ (notification, logging, ...).
+- **Prisma**: ORM cho PostgreSQL, mỗi service một schema riêng.
+- **Swagger**: Tự động sinh docs cho REST API tại API Gateway.
+- **Validation, Exception Filter, Response Interceptor**: Chuẩn hóa response, validate input, xử lý lỗi tập trung.
+- **Kubernetes-ready**: Healthcheck, resource limit, configmap, HPA, network policy.
 
-Tất cả controllers kế thừa từ `BaseController` với các tính năng:
+## 🐳 Docker & Triển khai
 
-- Service client management
-- Circuit breaker integration
-- Health check endpoints (chỉ ở API Gateway)
-- Automatic reply topic subscription
-- Lifecycle management
-
-#### 🛡️ Circuit Breaker
-
-```typescript
-const result = await this.sendToService('user-service', 'get-user-profile', data, {
-  timeout: 10000,
-  retries: 2,
-  circuitBreaker: true,
-});
-```
-
-#### 📡 Kafka Communication
-
-- **Request-Response**: Sử dụng `send()` với reply topics
-- **Event-Driven**: Sử dụng `emit()` cho async communication
-- **Automatic Subscription**: Tự động subscribe reply topics
-
-#### 🔍 Health Monitoring
-
-- **Chỉ API Gateway expose các endpoint health/info/circuit-breakers**
-
-```bash
-# Service health
-GET /api/health
-
-# Service info
-GET /api/info
-
-# Circuit breaker status
-GET /api/circuit-breakers
-```
-
-## 🚀 Deployment
-
-### Production
-
-```bash
-# Build production
-npm run build:prod
-
-# Start production
-npm run start:prod
-```
-
-### Docker
-
-```bash
-# Build images
-docker-compose build
-
-# Start services
-docker-compose up -d
-```
+- **Build image từng service:**
+  ```
+  docker build -t puchi-api-gateway ./apps/api-gateway
+  docker build -t puchi-user-service ./apps/user-service
+  # ...
+  ```
+- **Push image:**
+  ```
+  ./scripts/build-push-all.sh
+  ```
+- **Khởi động toàn bộ infra:**
+  ```
+  docker-compose up -d
+  ```
 
 ## 🔐 Security
 
-- **Authentication**: Clerk integration tại API Gateway
-- **Authorization**: Role-based access control tại API Gateway
-- **Data Protection**: Encryption và validation
-- **Service-to-Service**: Secure communication qua Kafka
+- **Authentication**: Clerk tích hợp tại API Gateway.
+- **Authorization**: Role-based access control tại API Gateway.
+- **Data Protection**: Validation, encryption, logging.
 
-## 📊 Monitoring
+## 📚 Tài liệu
 
-- **Health Checks**: Real-time service health (API Gateway)
-- **Circuit Breakers**: Fault tolerance monitoring (API Gateway)
-- **Logging**: Structured logging với correlation IDs
-- **Metrics**: Performance và error tracking
+- Các file tài liệu chi tiết đã được tích hợp vào README.md này.
+- File proto cho gRPC: `/proto/*.proto`
+- Ví dụ cấu hình env: `env.local.example.txt`
 
-## 🤝 Contributing
+## 🤝 Đóng góp
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-## 📄 License
-
-**Bản quyền © 2024 - Tất cả quyền được bảo lưu**
-
-Dự án này được phát triển và sở hữu bởi tác giả. Không được phép sao chép, phân phối hoặc sử dụng cho mục đích thương mại mà không có sự cho phép bằng văn bản.
-
-### Điều khoản sử dụng:
-
-- Dự án này được phát triển cho mục đích học tập và nghiên cứu
-- Không được phép sử dụng cho mục đích thương mại
-- Không được phép phân phối lại mã nguồn
-- Mọi vi phạm sẽ được xử lý theo quy định pháp luật
-
-## 📞 Liên hệ
-
-- **Tác giả**: Lê Công Hoan
-- **Email**: lehoan.dev@gmail.com
-
----
-
-**Lưu ý**: Dự án này đang trong giai đoạn phát triển. Vui lòng báo cáo bugs và đề xuất tính năng mới thông qua GitHub Issues.
+- Fork, tạo branch, PR như bình thường.
+- Mọi ý kiến/đóng góp về kiến trúc, code, CI/CD, k8s đều hoan nghênh!

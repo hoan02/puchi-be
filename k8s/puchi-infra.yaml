@@ -277,3 +277,23 @@ spec:
         resources:
           requests:
             storage: 2Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microservice-config
+  namespace: default
+  labels:
+    app: microservice
+    environment: production
+    managed-by: user
+    tier: backend
+data:
+  userServiceGrpcUrl: 'user-service:50051'
+  lessonServiceGrpcUrl: 'lesson-service:50052'
+  progressServiceGrpcUrl: 'progress-service:50053'
+  notificationServiceGrpcUrl: 'notification-service:50054'
+  mediaServiceGrpcUrl: 'media-service:50055'
+  quizServiceGrpcUrl: 'quiz-service:50056'
+  vocabularyServiceGrpcUrl: 'vocabulary-service:50057'
+  analyticsServiceGrpcUrl: 'analytics-service:50058'

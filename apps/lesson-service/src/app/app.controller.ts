@@ -6,45 +6,18 @@ import { PrismaService } from '@puchi-be/database';
 import {
   CLIENT_KAFKA_NAMES,
   LessonCreatedEvent,
-  BaseController,
 } from '@puchi-be/shared';
 
 @Controller()
-export class AppController extends BaseController {
+export class AppController {
+  private readonly logger = new Logger(AppController.name);
+
   constructor(
     private readonly appService: AppService,
     private readonly prismaService: PrismaService,
     @Inject(CLIENT_KAFKA_NAMES.USER_CLIENT) private readonly userClient: ClientKafka,
     @Inject(CLIENT_KAFKA_NAMES.PROGRESS_CLIENT) private readonly progressClient: ClientKafka,
-  ) {
-    super('LessonService', '1.0.0', 8002);
-  }
-
-  async initializeServiceClients(): Promise<void> {
-    this.registerServiceClient('user-service', this.userClient);
-    this.registerServiceClient('progress-service', this.progressClient);
-  }
-
-  async initializeResources(): Promise<void> {
-    // Khởi tạo database connection
-    await this.prismaService.$connect();
-    this.logger.log('Database connection established');
-  }
-
-  async cleanupResources(): Promise<void> {
-    await this.prismaService.$disconnect();
-    this.logger.log('Database connection closed');
-  }
-
-  async registerHealthCheck(): Promise<void> {
-    // Đăng ký health check với service registry (có thể implement sau)
-    this.logger.log('Health check registered');
-  }
-
-  async deregisterFromServiceRegistry(): Promise<void> {
-    // Deregister từ service registry (có thể implement sau)
-    this.logger.log('Deregistered from service registry');
-  }
+  ) { }
 
   @Get()
   getData(): { message: string } {
@@ -75,24 +48,21 @@ export class AppController extends BaseController {
 
       this.logger.log(`Lesson saved with ID: ${savedLesson.id}`);
 
-      // Sử dụng ServiceClient với circuit breaker
-      await Promise.all([
-        // Notify progress service to create progress tracking
-        this.emitToService('progress-service', "lesson-available", {
-          lessonId: savedLesson.id,
-          userId: event.createdBy,
-          title: savedLesson.title,
-          durationMinutes: savedLesson.durationMinutes
-        }, { timeout: 5000, retries: 3 }),
+      // Notify progress service to create progress tracking
+      await this.progressClient.emit("lesson-available", {
+        lessonId: savedLesson.id,
+        userId: event.createdBy,
+        title: savedLesson.title,
+        durationMinutes: savedLesson.durationMinutes
+      }).toPromise();
 
-        // Notify user service about new lesson creation
-        this.emitToService('user-service', "user-activity", {
-          userId: event.createdBy,
-          activity: 'lesson_created',
-          lessonId: savedLesson.id,
-          timestamp: new Date().toISOString()
-        }, { timeout: 5000, retries: 3 }),
-      ]);
+      // Notify user service about new lesson creation
+      await this.userClient.emit("user-activity", {
+        userId: event.createdBy,
+        activity: 'lesson_created',
+        lessonId: savedLesson.id,
+        timestamp: new Date().toISOString()
+      }).toPromise();
 
       return {
         success: true,

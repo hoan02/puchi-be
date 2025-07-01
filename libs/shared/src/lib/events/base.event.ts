@@ -1,3 +1,7 @@
+// ===================== BASE EVENT =====================
+// BaseEvent chỉ dùng cho các event bất đồng bộ (Kafka)
+// Nếu service không dùng event qua Kafka thì không cần import file này
+
 export abstract class BaseEvent {
   public readonly timestamp: Date = new Date();
   public readonly eventId: string = crypto.randomUUID();

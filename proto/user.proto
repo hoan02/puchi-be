@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package user;
+
+service UserService {
+  rpc GetUserProfile (GetUserProfileRequest) returns (UserProfileResponse);
+  rpc GetPublicInfo (GetPublicInfoRequest) returns (PublicInfoResponse);
+}
+
+message GetUserProfileRequest {
+  string userId = 1;
+}
+
+message UserProfileResponse {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  // Thêm các trường khác nếu cần
+}
+
+message GetPublicInfoRequest {}
+message PublicInfoResponse {
+  string info = 1;
+} 

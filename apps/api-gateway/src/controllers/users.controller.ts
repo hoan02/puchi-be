@@ -1,162 +1,61 @@
-import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
-import {
-  ClerkAuthGuard,
-  CurrentUser,
-  UserAuthPayload,
-  Public,
-  CLIENT_KAFKA_NAMES,
-  BaseController,
-} from '@puchi-be/shared';
+import { Controller, Get, Inject, UseGuards, OnModuleInit } from '@nestjs/common';
+import { ClerkAuthGuard, CurrentUser, UserAuthPayload, Public } from '@puchi-be/shared';
 import { ApiResponseDto } from '../dto/lesson.dto';
-import { GetUserProfileEvent, UserProfileResponse } from '../events/user.events';
-import { ClientKafka } from '@nestjs/microservices';
+import { ClientGrpc } from '@nestjs/microservices';
+import { GrpcMethod } from '@nestjs/microservices';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
+
+interface UserServiceGrpc {
+  getUserProfile(data: { userId: string }): any;
+  getPublicInfo(data: object): any;
+}
 
 @Controller('users')
-export class UsersController extends BaseController {
+export class UsersController implements OnModuleInit {
+  private userServiceGrpc: UserServiceGrpc;
+
   constructor(
-    @Inject(CLIENT_KAFKA_NAMES.USER_CLIENT)
-    private readonly userClient: ClientKafka
-  ) {
-    super('UsersController', '1.0.0', 8000);
-  }
+    @Inject('USER_SERVICE') private readonly userClient: ClientGrpc,
+  ) { }
 
-  async initializeServiceClients(): Promise<void> {
-    this.registerServiceClient('user-service', this.userClient);
-  }
-
-  async initializeResources(): Promise<void> {
-    // Khởi tạo các tài nguyên cần thiết
-    this.logger.log('Users controller resources initialized');
-  }
-
-  async cleanupResources(): Promise<void> {
-    this.logger.log('Users controller resources cleaned up');
-  }
-
-  async registerHealthCheck(): Promise<void> {
-    this.logger.log('Users controller health check registered');
-  }
-
-  async deregisterFromServiceRegistry(): Promise<void> {
-    this.logger.log('Users controller deregistered from service registry');
-  }
-
-  protected async subscribeServiceReplyTopics(serviceName: string, client: ClientKafka): Promise<void> {
-    if (serviceName === 'user-service') {
-      // Subscribe reply topics cho user service
-      client.subscribeToResponseOf('get-user-profile');
-      client.subscribeToResponseOf('get-public-info');
-      await client.connect();
-      this.logger.log(`Subscribed to reply topics for ${serviceName}`);
-    }
+  onModuleInit() {
+    this.userServiceGrpc = this.userClient.getService<UserServiceGrpc>('UserService');
   }
 
   @Get('profile')
   @UseGuards(ClerkAuthGuard)
-  async getProfile(@CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<UserProfileResponse>> {
-    const startTime = Date.now();
-
-    this.logger.log('Getting user profile', {
-      userId: user.id,
-      endpoint: '/api/users/profile'
-    });
-
-    try {
-      const event: GetUserProfileEvent = { userId: user.id };
-
-      // Sử dụng ServiceClient với circuit breaker
-      const profile = await this.sendToService('user-service', 'get-user-profile', event, {
-        timeout: 10000,
-        retries: 2
-      });
-
-      const duration = Date.now() - startTime;
-
-      this.logger.log('User profile retrieved successfully', {
-        userId: user.id,
-        duration: `${duration}ms`,
-        profileId: profile.id
-      });
-
-      // Log user action
-      this.logger.log(`User action: get_profile - User: ${user.id}, Duration: ${duration}ms, Success: true`);
-
-      return {
-        data: profile,
-        timestamp: new Date().toISOString()
-      };
-    } catch (error) {
-      const duration = Date.now() - startTime;
-
-      this.logger.error('Error getting user profile', {
-        userId: user.id,
-        endpoint: '/api/users/profile',
-        duration: `${duration}ms`,
-        operation: 'get_user_profile',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-
-      throw error;
-    }
+  async getProfile(@CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<any>> {
+    const profile = await firstValueFrom(this.userServiceGrpc.getUserProfile({ userId: user.id }));
+    return {
+      data: profile,
+      timestamp: new Date().toISOString()
+    };
   }
 
   @Get('public-info')
   @Public()
   async getPublicInfo(): Promise<ApiResponseDto<any>> {
-    const startTime = Date.now();
+    const publicInfo = await firstValueFrom(this.userServiceGrpc.getPublicInfo({}));
+    return {
+      data: publicInfo,
+      timestamp: new Date().toISOString()
+    };
+  }
 
-    this.logger.log('Getting public user info', {
-      endpoint: '/api/users/public-info'
-    });
+  @GrpcMethod('UserService', 'GetUser')
+  getUser(data: { userId: string }) {
+    // Lấy user từ DB, ví dụ trả về cứng
+    return { userId: data.userId, name: 'User Name', email: 'user@email.com' };
+  }
+}
 
-    try {
-      // Sử dụng ServiceClient với circuit breaker
-      const publicInfo = await this.sendToService('user-service', 'get-public-info', {}, {
-        timeout: 5000,
-        retries: 1
-      });
-
-      const duration = Date.now() - startTime;
-
-      this.logger.log('Public user info retrieved successfully', {
-        duration: `${duration}ms`,
-        data: publicInfo
-      });
-
-      return {
-        data: publicInfo,
-        timestamp: new Date().toISOString()
-      };
-    } catch (error) {
-      const duration = Date.now() - startTime;
-
-      this.logger.warn('Failed to get public info from User Service, using fallback', {
-        endpoint: '/api/users/public-info',
-        duration: `${duration}ms`,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-
-      // Fallback data nếu Kafka call thất bại
-      const fallbackData = {
-        totalUsers: 1000,
-        activeUsers: 750,
-        totalLessons: 50,
-        completedLessons: 25000,
-        systemStatus: 'healthy',
-        lastUpdated: new Date().toISOString(),
-        features: [
-          'vocabulary-learning',
-          'grammar-exercises',
-          'progress-tracking',
-          'achievement-system'
-        ],
-        note: 'Data from fallback (User Service unavailable)'
-      };
-
-      return {
-        data: fallbackData,
-        timestamp: new Date().toISOString()
-      };
-    }
+@Controller()
+export class NotificationController {
+  @MessagePattern('lesson.completed')
+  async handleLessonCompleted(@Payload() data: any) {
+    const { userId, lessonId } = data.value || data;
+    // Gửi thông báo cho user ở đây
+    console.log(`Gửi thông báo cho user ${userId} về bài học ${lessonId}`);
   }
 } 

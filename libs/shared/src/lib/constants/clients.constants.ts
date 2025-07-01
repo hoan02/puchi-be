@@ -171,3 +171,7 @@ export const ANALYTICS_CLIENT_KAFKA_MODULE = {
   name: CLIENT_KAFKA_NAMES.ANALYTICS_CLIENT,
   ...ANALYTICS_CLIENT_KAFKA_OPTIONS
 }
+
+// ===================== KAFKA CLIENT CONSTANTS =====================
+// File này chỉ dùng cho cấu hình Kafka client/module cho các service sử dụng event bất đồng bộ (Kafka)
+// Nếu service không dùng Kafka thì không cần import file này

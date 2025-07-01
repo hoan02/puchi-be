@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   # Kafka Infrastructure
   zookeeper:
@@ -43,67 +44,109 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
 
-  # Core Database (User + Lesson + Progress)
-  core-db:
+  # Mỗi service một database riêng biệt
+  user-db:
     image: postgres:15
-    container_name: core-db
+    container_name: user-db
     environment:
-      POSTGRES_DB: puchi_core
+      POSTGRES_DB: puchi_user
       POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: puchi_password
+      POSTGRES_PASSWORD: 123456
     ports:
       - '5432:5432'
     volumes:
-      - core_db_data:/var/lib/postgresql/data
-    command: >
-      postgres
-      -c shared_preload_libraries=pg_stat_statements
-      -c pg_stat_statements.track=all
-      -c max_connections=200
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
+      - user_db_data:/var/lib/postgresql/data
 
-  # Support Database (Notification + Analytics)
-  support-db:
+  lesson-db:
     image: postgres:15
-    container_name: support-db
+    container_name: lesson-db
     environment:
-      POSTGRES_DB: puchi_support
+      POSTGRES_DB: puchi_lesson
       POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: puchi_password
+      POSTGRES_PASSWORD: 123456
     ports:
       - '5433:5432'
     volumes:
-      - support_db_data:/var/lib/postgresql/data
-    command: >
-      postgres
-      -c shared_preload_libraries=pg_stat_statements
-      -c pg_stat_statements.track=all
-      -c max_connections=100
-      -c shared_buffers=128MB
-      -c effective_cache_size=512MB
+      - lesson_db_data:/var/lib/postgresql/data
 
-  # Feature Database (Audio + Vocabulary + Quiz) - Optional
-  feature-db:
+  progress-db:
     image: postgres:15
-    container_name: feature-db
+    container_name: progress-db
     environment:
-      POSTGRES_DB: puchi_feature
+      POSTGRES_DB: puchi_progress
       POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: puchi_password
+      POSTGRES_PASSWORD: 123456
     ports:
       - '5434:5432'
     volumes:
-      - feature_db_data:/var/lib/postgresql/data
-    command: >
-      postgres
-      -c shared_preload_libraries=pg_stat_statements
-      -c pg_stat_statements.track=all
-      -c max_connections=50
-      -c shared_buffers=64MB
-      -c effective_cache_size=256MB
+      - progress_db_data:/var/lib/postgresql/data
+
+  notification-db:
+    image: postgres:15
+    container_name: notification-db
+    environment:
+      POSTGRES_DB: puchi_notification
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - '5435:5432'
+    volumes:
+      - notification_db_data:/var/lib/postgresql/data
+
+  analytics-db:
+    image: postgres:15
+    container_name: analytics-db
+    environment:
+      POSTGRES_DB: puchi_analytics
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - '5436:5432'
+    volumes:
+      - analytics_db_data:/var/lib/postgresql/data
+
+  media-db:
+    image: postgres:15
+    container_name: media-db
+    environment:
+      POSTGRES_DB: puchi_media
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - '5437:5432'
+    volumes:
+      - media_db_data:/var/lib/postgresql/data
+
+  vocabulary-db:
+    image: postgres:15
+    container_name: vocabulary-db
+    environment:
+      POSTGRES_DB: puchi_vocabulary
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - '5438:5432'
+    volumes:
+      - vocabulary_db_data:/var/lib/postgresql/data
+
+  quiz-db:
+    image: postgres:15
+    container_name: quiz-db
+    environment:
+      POSTGRES_DB: puchi_quiz
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - '5439:5432'
+    volumes:
+      - quiz_db_data:/var/lib/postgresql/data
 
 volumes:
-  core_db_data:
-  support_db_data:
-  feature_db_data:
+  user_db_data:
+  lesson_db_data:
+  progress_db_data:
+  notification_db_data:
+  analytics_db_data:
+  media_db_data:
+  vocabulary_db_data:
+  quiz_db_data:

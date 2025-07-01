@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package vocabulary;
+
+service VocabularyService {
+  rpc GetVocabularyById (GetVocabularyByIdRequest) returns (VocabularyResponse);
+}
+
+message GetVocabularyByIdRequest {
+  string id = 1;
+  string userId = 2;
+}
+
+message VocabularyResponse {
+  string id = 1;
+  string word = 2;
+  string meaning = 3;
+  string example = 4;
+  // Thêm các trường khác nếu cần
+} 

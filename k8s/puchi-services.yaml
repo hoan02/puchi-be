@@ -19,10 +19,37 @@ spec:
           ports:
             - containerPort: 8000
           env:
-            - name: KAFKA_BROKERS
-              value: 'kafka:29092'
             - name: PORT
               value: '8000'
+            - name: USER_SERVICE_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: microservice-config
+                  key: userServiceGrpcUrl
+            - name: LESSON_SERVICE_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: microservice-config
+                  key: lessonServiceGrpcUrl
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -56,6 +83,7 @@ spec:
           image: hoanit/user-service:latest
           ports:
             - containerPort: 8001
+            - containerPort: 50051
           env:
             - name: KAFKA_BROKERS
               value: 'kafka:29092'
@@ -73,6 +101,9 @@ spec:
     - protocol: TCP
       port: 8001
       targetPort: 8001
+    - protocol: TCP
+      port: 50051
+      targetPort: 50051
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -94,6 +125,7 @@ spec:
           image: lesson-service:latest
           ports:
             - containerPort: 8002
+            - containerPort: 50052
           env:
             - name: KAFKA_BROKERS
               value: 'kafka:29092'
@@ -111,6 +143,9 @@ spec:
     - protocol: TCP
       port: 8002
       targetPort: 8002
+    - protocol: TCP
+      port: 50052
+      targetPort: 50052
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -132,6 +167,7 @@ spec:
           image: progress-service:latest
           ports:
             - containerPort: 8003
+            - containerPort: 50053
           env:
             - name: KAFKA_BROKERS
               value: 'kafka:29092'
@@ -149,6 +185,9 @@ spec:
     - protocol: TCP
       port: 8003
       targetPort: 8003
+    - protocol: TCP
+      port: 50053
+      targetPort: 50053
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -170,6 +209,7 @@ spec:
           image: media-service:latest
           ports:
             - containerPort: 8004
+            - containerPort: 50055
           env:
             - name: KAFKA_BROKERS
               value: 'kafka:29092'
@@ -187,6 +227,9 @@ spec:
     - protocol: TCP
       port: 8004
       targetPort: 8004
+    - protocol: TCP
+      port: 50055
+      targetPort: 50055
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -208,6 +251,7 @@ spec:
           image: notification-service:latest
           ports:
             - containerPort: 8005
+            - containerPort: 50054
           env:
             - name: KAFKA_BROKERS
               value: 'kafka:29092'
@@ -225,6 +269,9 @@ spec:
     - protocol: TCP
       port: 8005
       targetPort: 8005
+    - protocol: TCP
+      port: 50054
+      targetPort: 50054
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -246,6 +293,7 @@ spec:
           image: vocabulary-service:latest
           ports:
             - containerPort: 8006
+            - containerPort: 50057
           env:
             - name: KAFKA_BROKERS
               value: 'kafka:29092'
@@ -263,6 +311,9 @@ spec:
     - protocol: TCP
       port: 8006
       targetPort: 8006
+    - protocol: TCP
+      port: 50057
+      targetPort: 50057
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -284,6 +335,7 @@ spec:
           image: quiz-service:latest
           ports:
             - containerPort: 8007
+            - containerPort: 50056
           env:
             - name: KAFKA_BROKERS
               value: 'kafka:29092'
@@ -301,6 +353,9 @@ spec:
     - protocol: TCP
       port: 8007
       targetPort: 8007
+    - protocol: TCP
+      port: 50056
+      targetPort: 50056
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -322,6 +377,7 @@ spec:
           image: analytics-service:latest
           ports:
             - containerPort: 8008
+            - containerPort: 50058
           env:
             - name: KAFKA_BROKERS
               value: 'kafka:29092'
@@ -339,4 +395,7 @@ spec:
     - protocol: TCP
       port: 8008
       targetPort: 8008
+    - protocol: TCP
+      port: 50058
+      targetPort: 50058
   type: ClusterIP

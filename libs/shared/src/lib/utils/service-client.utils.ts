@@ -1,5 +1,6 @@
-import { ClientKafka } from '@nestjs/microservices/client';
-import { firstValueFrom, timeout, catchError, of } from 'rxjs';
+import { HttpService } from '@nestjs/axios';
+import { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { firstValueFrom } from 'rxjs';
 import { CircuitBreaker } from './circuit-breaker.utils';
 import { createLogger } from './logger.utils';
 
@@ -9,158 +10,84 @@ export interface ServiceCallOptions {
   circuitBreaker?: boolean;
 }
 
-export class ServiceClient {
-  private readonly logger = createLogger('ServiceClient');
+export class HttpServiceClient {
+  private readonly logger = createLogger('HttpServiceClient');
   private circuitBreakers: Map<string, CircuitBreaker> = new Map();
 
   constructor(
-    private readonly client: ClientKafka,
+    private readonly httpService: HttpService,
+    private readonly baseUrl: string,
     private readonly serviceName: string
   ) { }
 
-  async emit<T = any>(
-    pattern: string,
+  async get<T = any>(
+    path: string,
+    options: ServiceCallOptions = {},
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    return this.request<T>('get', path, undefined, options, config);
+  }
+
+  async post<T = any>(
+    path: string,
     data: any,
-    options: ServiceCallOptions = {}
+    options: ServiceCallOptions = {},
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    return this.request<T>('post', path, data, options, config);
+  }
+
+  private async request<T = any>(
+    method: 'get' | 'post',
+    path: string,
+    data: any,
+    options: ServiceCallOptions = {},
+    config?: AxiosRequestConfig
   ): Promise<T> {
     const {
       timeout: timeoutMs = 5000,
-      retries = 3,
+      retries = 2,
       circuitBreaker: useCircuitBreaker = true
     } = options;
-
-    const circuitBreakerKey = `${this.serviceName}:${pattern}`;
-
+    const url = `${this.baseUrl}${path}`;
+    const circuitBreakerKey = `${this.serviceName}:${method}:${path}`;
     if (!this.circuitBreakers.has(circuitBreakerKey)) {
       this.circuitBreakers.set(circuitBreakerKey, new CircuitBreaker(circuitBreakerKey));
     }
-
     const circuitBreaker = this.circuitBreakers.get(circuitBreakerKey)!;
-
     const operation = async (): Promise<T> => {
       let lastError: Error;
-
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
-          this.logger.info(`Calling ${pattern} on ${this.serviceName} (attempt ${attempt}/${retries})`);
-
-          const result = await firstValueFrom(
-            this.client.emit(pattern, data).pipe(
-              timeout(timeoutMs),
-              catchError((error) => {
-                this.logger.error(`Error calling ${pattern}: ${error.message}`);
-                return of({ error: error.message });
-              })
-            )
-          );
-
-          if (result && 'error' in result) {
-            throw new Error(result.error);
+          this.logger.info(`HTTP ${method.toUpperCase()} ${url} (attempt ${attempt}/${retries})`);
+          let response: AxiosResponse<T>;
+          if (method === 'get') {
+            response = await firstValueFrom(
+              this.httpService.get<T>(url, { ...config, timeout: timeoutMs })
+            );
+          } else {
+            response = await firstValueFrom(
+              this.httpService.post<T>(url, data, { ...config, timeout: timeoutMs })
+            );
           }
-
-          return result as T;
+          return response.data;
         } catch (error) {
           lastError = error as Error;
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          this.logger.warn(`Attempt ${attempt} failed for ${pattern}: ${errorMessage}`);
-
+          this.logger.warn(`Attempt ${attempt} failed for ${method.toUpperCase()} ${url}: ${errorMessage}`);
           if (attempt < retries) {
-            await this.delay(1000 * attempt); // Exponential backoff
+            await this.delay(1000 * attempt);
           }
         }
       }
-
       throw lastError!;
     };
-
     if (useCircuitBreaker) {
       return circuitBreaker.execute(operation);
     }
-
     return operation();
   }
-
-  async send<T = any>(
-    pattern: string,
-    data: any,
-    options: ServiceCallOptions = {}
-  ): Promise<T> {
-    const {
-      timeout: timeoutMs = 5000,
-      retries = 3,
-      circuitBreaker: useCircuitBreaker = true
-    } = options;
-
-    const circuitBreakerKey = `${this.serviceName}:${pattern}`;
-
-    if (!this.circuitBreakers.has(circuitBreakerKey)) {
-      this.circuitBreakers.set(circuitBreakerKey, new CircuitBreaker(circuitBreakerKey));
-    }
-
-    const circuitBreaker = this.circuitBreakers.get(circuitBreakerKey)!;
-
-    const operation = async (): Promise<T> => {
-      let lastError: Error;
-
-      for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-          this.logger.info(`Sending ${pattern} to ${this.serviceName} (attempt ${attempt}/${retries})`);
-
-          const result = await firstValueFrom(
-            this.client.send(pattern, data).pipe(
-              timeout(timeoutMs),
-              catchError((error) => {
-                this.logger.error(`Error sending ${pattern}: ${error.message}`);
-                return of({ error: error.message });
-              })
-            )
-          );
-
-          if (result && 'error' in result) {
-            throw new Error(result.error);
-          }
-
-          return result as T;
-        } catch (error) {
-          lastError = error as Error;
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          this.logger.warn(`Attempt ${attempt} failed for ${pattern}: ${errorMessage}`);
-
-          if (attempt < retries) {
-            await this.delay(1000 * attempt); // Exponential backoff
-          }
-        }
-      }
-
-      throw lastError!;
-    };
-
-    if (useCircuitBreaker) {
-      return circuitBreaker.execute(operation);
-    }
-
-    return operation();
-  }
-
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  getKafkaClient(): ClientKafka {
-    return this.client;
-  }
-
-  getCircuitBreakerState(pattern: string): any {
-    const circuitBreakerKey = `${this.serviceName}:${pattern}`;
-    const circuitBreaker = this.circuitBreakers.get(circuitBreakerKey);
-    return circuitBreaker ? circuitBreaker.getState() : null;
-  }
-
-  resetCircuitBreaker(pattern: string): void {
-    const circuitBreakerKey = `${this.serviceName}:${pattern}`;
-    const circuitBreaker = this.circuitBreakers.get(circuitBreakerKey);
-    if (circuitBreaker) {
-      circuitBreaker.reset();
-    }
   }
 } 

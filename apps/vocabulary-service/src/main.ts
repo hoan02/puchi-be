@@ -6,19 +6,30 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { join } from 'path';
 import { VOCABULARY_CLIENT_KAFKA_OPTIONS } from '@puchi-be/shared';
 
 async function bootstrap() {
   const logger = new Logger('Vocabulary Service');
 
-  // Tạo microservice app với Kafka transport
-  const app = await NestFactory.createMicroservice(
-    AppModule,
-    VOCABULARY_CLIENT_KAFKA_OPTIONS
-  );
+  // Khởi tạo gRPC microservice
+  const grpcApp = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+    transport: Transport.GRPC,
+    options: {
+      package: 'vocabulary',
+      protoPath: join(__dirname, '../../../proto/vocabulary.proto'),
+      url: '0.0.0.0:50057',
+    },
+  });
 
-  await app.listen();
-  logger.log('🚀 Vocabulary Service Microservice is running with Kafka transport');
+  // Khởi tạo Kafka microservice
+  const kafkaApp = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, VOCABULARY_CLIENT_KAFKA_OPTIONS);
+
+  // Lắng nghe cả hai
+  await Promise.all([grpcApp.listen(), kafkaApp.listen()]);
+
+  logger.log('🚀 Vocabulary Service is running with gRPC and Kafka transport');
 }
 
 bootstrap();

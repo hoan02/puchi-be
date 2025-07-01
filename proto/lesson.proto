@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package lesson;
+
+service LessonService {
+  rpc GetLessonById (GetLessonByIdRequest) returns (LessonResponse);
+}
+
+message GetLessonByIdRequest {
+  string id = 1;
+  string userId = 2;
+}
+
+message LessonResponse {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  int32 durationMinutes = 4;
+  string createdBy = 5;
+  // Thêm các trường khác nếu cần
+} 

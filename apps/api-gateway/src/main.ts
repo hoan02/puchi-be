@@ -6,11 +6,14 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
-import { SERVICE_PORTS } from '@puchi-be/shared';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { CustomExceptionFilter } from './custom-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('API Gateway');
+
+  app.useGlobalFilters(new CustomExceptionFilter());
 
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
@@ -36,9 +39,19 @@ async function bootstrap() {
     next();
   });
 
-  const port = process.env.PORT || SERVICE_PORTS.API_GATEWAY;
+  // Swagger config
+  const config = new DocumentBuilder()
+    .setTitle('API Gateway')
+    .setDescription('REST API Gateway for microservices')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api-docs', app, document);
+
+  const port = process.env.PORT || 8000;
   await app.listen(port);
   logger.log(`🚀 API Gateway is running on: http://localhost:${port}/${globalPrefix}`);
+  logger.log(`📚 Swagger docs available at: http://localhost:${port}/api-docs`);
 }
 
 bootstrap();
