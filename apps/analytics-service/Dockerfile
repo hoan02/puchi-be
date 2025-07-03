@@ -14,6 +14,7 @@ COPY .env ./.env
 
 # Cài dependencies
 RUN npm install
+RUN npx prisma generate --schema=apps/analytics-service/prisma/schema.prisma
 
 # Build chỉ project analytics-service
 RUN npx nx build analytics-service
@@ -30,6 +31,7 @@ COPY --from=builder /app/dist/apps/analytics-service ./dist
 
 # Copy file proto nếu cần
 COPY proto ./proto
+COPY proto /proto
 
 # Copy .env from builder
 COPY --from=builder /app/.env ./.env

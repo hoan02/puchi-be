@@ -29,6 +29,7 @@ COPY --from=builder /app/dist/apps/api-gateway ./dist
 
 # Copy file proto nếu cần
 COPY proto ./proto
+COPY proto /proto
 
 # Copy .env from builder
 COPY --from=builder /app/.env ./.env

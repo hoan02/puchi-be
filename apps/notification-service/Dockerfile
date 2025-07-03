@@ -14,6 +14,7 @@ COPY .env ./.env
 
 # Cài dependencies
 RUN npm install
+RUN npx prisma generate --schema=apps/notification-service/prisma/schema.prisma
 
 # Build chỉ project notification-service
 RUN npx nx build notification-service
@@ -30,6 +31,7 @@ COPY --from=builder /app/dist/apps/notification-service ./dist
 
 # Copy file proto nếu cần
 COPY proto ./proto
+COPY proto /proto
 
 # Copy .env from builder
 COPY --from=builder /app/.env ./.env

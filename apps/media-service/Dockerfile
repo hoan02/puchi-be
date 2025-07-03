@@ -13,6 +13,7 @@ COPY .env ./.env
 
 # Cài dependencies
 RUN npm install
+RUN npx prisma generate --schema=apps/media-service/prisma/schema.prisma
 
 # Build chỉ project media-service
 RUN npx nx build media-service
@@ -29,6 +30,7 @@ COPY --from=builder /app/dist/apps/media-service ./dist
 
 # Copy file proto nếu cần
 COPY proto ./proto
+COPY proto /proto
 
 # Copy .env from builder
 COPY --from=builder /app/.env ./.env
