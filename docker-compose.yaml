@@ -50,8 +50,8 @@ services:
     container_name: user-db
     environment:
       POSTGRES_DB: puchi_user
-      POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - '5432:5432'
     volumes:
@@ -62,8 +62,8 @@ services:
     container_name: lesson-db
     environment:
       POSTGRES_DB: puchi_lesson
-      POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - '5433:5432'
     volumes:
@@ -74,8 +74,8 @@ services:
     container_name: progress-db
     environment:
       POSTGRES_DB: puchi_progress
-      POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - '5434:5432'
     volumes:
@@ -86,8 +86,8 @@ services:
     container_name: notification-db
     environment:
       POSTGRES_DB: puchi_notification
-      POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - '5435:5432'
     volumes:
@@ -98,8 +98,8 @@ services:
     container_name: analytics-db
     environment:
       POSTGRES_DB: puchi_analytics
-      POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - '5436:5432'
     volumes:
@@ -110,8 +110,8 @@ services:
     container_name: media-db
     environment:
       POSTGRES_DB: puchi_media
-      POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - '5437:5432'
     volumes:
@@ -122,8 +122,8 @@ services:
     container_name: vocabulary-db
     environment:
       POSTGRES_DB: puchi_vocabulary
-      POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - '5438:5432'
     volumes:
@@ -134,8 +134,8 @@ services:
     container_name: quiz-db
     environment:
       POSTGRES_DB: puchi_quiz
-      POSTGRES_USER: puchi_user
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - '5439:5432'
     volumes:
@@ -179,7 +179,7 @@ services:
       - user-db
       - kafka
     environment:
-      DATABASE_URL: postgres://puchi_user:123456@user-db:5432/puchi_user
+      DATABASE_URL: ${USER_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
   lesson-service:
@@ -191,7 +191,7 @@ services:
       - lesson-db
       - kafka
     environment:
-      DATABASE_URL: postgres://puchi_user:123456@lesson-db:5432/puchi_lesson
+      DATABASE_URL: ${LESSON_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
   progress-service:
@@ -203,7 +203,7 @@ services:
       - progress-db
       - kafka
     environment:
-      DATABASE_URL: postgres://puchi_user:123456@progress-db:5432/puchi_progress
+      DATABASE_URL: ${PROGRESS_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
   notification-service:
@@ -215,7 +215,7 @@ services:
       - notification-db
       - kafka
     environment:
-      DATABASE_URL: postgres://puchi_user:123456@notification-db:5432/puchi_notification
+      DATABASE_URL: ${NOTIFICATION_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
   analytics-service:
@@ -227,7 +227,7 @@ services:
       - analytics-db
       - kafka
     environment:
-      DATABASE_URL: postgres://puchi_user:123456@analytics-db:5432/puchi_analytics
+      DATABASE_URL: ${ANALYTICS_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
   media-service:
@@ -239,7 +239,7 @@ services:
       - media-db
       - kafka
     environment:
-      DATABASE_URL: postgres://puchi_user:123456@media-db:5432/puchi_media
+      DATABASE_URL: ${MEDIA_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
   vocabulary-service:
@@ -251,7 +251,7 @@ services:
       - vocabulary-db
       - kafka
     environment:
-      DATABASE_URL: postgres://puchi_user:123456@vocabulary-db:5432/puchi_vocabulary
+      DATABASE_URL: ${VOCABULARY_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
   quiz-service:
@@ -263,7 +263,7 @@ services:
       - quiz-db
       - kafka
     environment:
-      DATABASE_URL: postgres://puchi_user:123456@quiz-db:5432/puchi_quiz
+      DATABASE_URL: ${QUIZ_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
 volumes:

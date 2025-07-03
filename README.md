@@ -104,7 +104,7 @@ Tạo file `.env.local` hoặc copy từ `env.local.example.txt` và chỉnh s�
 ### 3. Khởi động Docker (Kafka, Postgres, Kafka UI, các service backend...)
 
 ```bash
-docker-compose up -d
+docker-compose -f docker-compose.yaml up -d
 ```
 
 > **Lưu ý:**
@@ -117,8 +117,8 @@ docker-compose up -d
 Sau khi các container đã chạy, bạn cần migrate database cho từng service:
 
 ```bash
-docker-compose exec user-service npx prisma migrate deploy --schema=apps/user-service/prisma/schema.prisma
-docker-compose exec user-service npx prisma generate --schema=apps/user-service/prisma/schema.prisma
+docker-compose -f docker-compose.yaml exec user-service npx prisma migrate deploy --schema=apps/user-service/prisma/schema.prisma
+docker-compose -f docker-compose.yaml exec user-service npx prisma generate --schema=apps/user-service/prisma/schema.prisma
 # Lặp lại cho các service khác (lesson-service, progress-service, ...)
 ```
 
@@ -130,7 +130,7 @@ docker-compose exec user-service npx prisma generate --schema=apps/user-service/
 
 ### 6. Deploy lên Coolify
 
-- Tạo app stack mới, chọn file `docker-compose.yml` ở project root.
+- Tạo app stack mới, chọn file `docker-compose.yaml` ở project root.
 - Coolify sẽ tự build và khởi động toàn bộ hệ thống.
 - Sau khi deploy, SSH vào container từng service để migrate database như bước 4.
 
@@ -156,7 +156,7 @@ puchi-be/
 ├── libs/                    # Shared libraries (auth, utils, database, ...)
 ├── proto/                   # gRPC proto definitions
 ├── scripts/                 # Script build, deploy, test
-├── docker-compose.yml       # Docker infra (Kafka, Postgres, ...)
+├── docker-compose.yaml      # Docker infra (Kafka, Postgres, ...)
 └── README.md
 ```
 
