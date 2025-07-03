@@ -7,6 +7,7 @@ WORKDIR /app
 COPY ../../package*.json ./
 COPY ../../nx.json ./
 COPY ../../tsconfig.base.json ./
+COPY ../../eslint.config.mjs ./
 COPY ../../apps/user-service ./apps/user-service
 COPY ../../libs ./libs
 COPY ../../.env ./.env

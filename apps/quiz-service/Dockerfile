@@ -6,6 +6,7 @@ WORKDIR /app
 COPY ../../package*.json ./
 COPY ../../nx.json ./
 COPY ../../tsconfig.base.json ./
+COPY ../../eslint.config.mjs ./
 COPY ../../apps/quiz-service ./apps/quiz-service
 COPY ../../libs ./libs
 COPY ../../.env ./.env

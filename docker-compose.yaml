@@ -57,89 +57,89 @@ services:
     volumes:
       - user_db_data:/var/lib/postgresql/data
 
-  # lesson-db:
-  #   image: postgres:15
-  #   container_name: lesson-db
-  #   environment:
-  #     POSTGRES_DB: puchi_lesson
-  #     POSTGRES_USER: ${DB_USER}
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
-  #   ports:
-  #     - '5433:5432'
-  #   volumes:
-  #     - lesson_db_data:/var/lib/postgresql/data
+  lesson-db:
+    image: postgres:15
+    container_name: lesson-db
+    environment:
+      POSTGRES_DB: puchi_lesson
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '5433:5432'
+    volumes:
+      - lesson_db_data:/var/lib/postgresql/data
 
-  # progress-db:
-  #   image: postgres:15
-  #   container_name: progress-db
-  #   environment:
-  #     POSTGRES_DB: puchi_progress
-  #     POSTGRES_USER: ${DB_USER}
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
-  #   ports:
-  #     - '5434:5432'
-  #   volumes:
-  #     - progress_db_data:/var/lib/postgresql/data
+  progress-db:
+    image: postgres:15
+    container_name: progress-db
+    environment:
+      POSTGRES_DB: puchi_progress
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '5434:5432'
+    volumes:
+      - progress_db_data:/var/lib/postgresql/data
 
-  # notification-db:
-  #   image: postgres:15
-  #   container_name: notification-db
-  #   environment:
-  #     POSTGRES_DB: puchi_notification
-  #     POSTGRES_USER: ${DB_USER}
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
-  #   ports:
-  #     - '5435:5432'
-  #   volumes:
-  #     - notification_db_data:/var/lib/postgresql/data
+  notification-db:
+    image: postgres:15
+    container_name: notification-db
+    environment:
+      POSTGRES_DB: puchi_notification
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '5435:5432'
+    volumes:
+      - notification_db_data:/var/lib/postgresql/data
 
-  # analytics-db:
-  #   image: postgres:15
-  #   container_name: analytics-db
-  #   environment:
-  #     POSTGRES_DB: puchi_analytics
-  #     POSTGRES_USER: ${DB_USER}
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
-  #   ports:
-  #     - '5436:5432'
-  #   volumes:
-  #     - analytics_db_data:/var/lib/postgresql/data
+  analytics-db:
+    image: postgres:15
+    container_name: analytics-db
+    environment:
+      POSTGRES_DB: puchi_analytics
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '5436:5432'
+    volumes:
+      - analytics_db_data:/var/lib/postgresql/data
 
-  # media-db:
-  #   image: postgres:15
-  #   container_name: media-db
-  #   environment:
-  #     POSTGRES_DB: puchi_media
-  #     POSTGRES_USER: ${DB_USER}
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
-  #   ports:
-  #     - '5437:5432'
-  #   volumes:
-  #     - media_db_data:/var/lib/postgresql/data
+  media-db:
+    image: postgres:15
+    container_name: media-db
+    environment:
+      POSTGRES_DB: puchi_media
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '5437:5432'
+    volumes:
+      - media_db_data:/var/lib/postgresql/data
 
-  # vocabulary-db:
-  #   image: postgres:15
-  #   container_name: vocabulary-db
-  #   environment:
-  #     POSTGRES_DB: puchi_vocabulary
-  #     POSTGRES_USER: ${DB_USER}
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
-  #   ports:
-  #     - '5438:5432'
-  #   volumes:
-  #     - vocabulary_db_data:/var/lib/postgresql/data
+  vocabulary-db:
+    image: postgres:15
+    container_name: vocabulary-db
+    environment:
+      POSTGRES_DB: puchi_vocabulary
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '5438:5432'
+    volumes:
+      - vocabulary_db_data:/var/lib/postgresql/data
 
-  # quiz-db:
-  #   image: postgres:15
-  #   container_name: quiz-db
-  #   environment:
-  #     POSTGRES_DB: puchi_quiz
-  #     POSTGRES_USER: ${DB_USER}
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
-  #   ports:
-  #     - '5439:5432'
-  #   volumes:
-  #     - quiz_db_data:/var/lib/postgresql/data
+  quiz-db:
+    image: postgres:15
+    container_name: quiz-db
+    environment:
+      POSTGRES_DB: puchi_quiz
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '5439:5432'
+    volumes:
+      - quiz_db_data:/var/lib/postgresql/data
 
   api-gateway:
     build:
@@ -148,14 +148,14 @@ services:
     container_name: api-gateway
     depends_on:
       - user-service
-      # - lesson-service
-      # - progress-service
-      # - notification-service
-      # - analytics-service
-      # - media-service
-      # - vocabulary-service
-      # - quiz-service
-      # - kafka
+      - lesson-service
+      - progress-service
+      - notification-service
+      - analytics-service
+      - media-service
+      - vocabulary-service
+      - quiz-service
+      - kafka
     environment:
       PORT: 9000
       USER_SERVICE_GRPC_URL: user-service:50051
@@ -182,96 +182,96 @@ services:
       DATABASE_URL: ${USER_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
-  # lesson-service:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/lesson-service/Dockerfile
-  #   container_name: lesson-service
-  #   depends_on:
-  #     - lesson-db
-  #     - kafka
-  #   environment:
-  #     DATABASE_URL: ${LESSON_SERVICE_DATABASE_URL}
-  #     KAFKA_BROKER: kafka:29092
+  lesson-service:
+    build:
+      context: .
+      dockerfile: apps/lesson-service/Dockerfile
+    container_name: lesson-service
+    depends_on:
+      - lesson-db
+      - kafka
+    environment:
+      DATABASE_URL: ${LESSON_SERVICE_DATABASE_URL}
+      KAFKA_BROKER: kafka:29092
 
-  # progress-service:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/progress-service/Dockerfile
-  #   container_name: progress-service
-  #   depends_on:
-  #     - progress-db
-  #     - kafka
-  #   environment:
-  #     DATABASE_URL: ${PROGRESS_SERVICE_DATABASE_URL}
-  #     KAFKA_BROKER: kafka:29092
+  progress-service:
+    build:
+      context: .
+      dockerfile: apps/progress-service/Dockerfile
+    container_name: progress-service
+    depends_on:
+      - progress-db
+      - kafka
+    environment:
+      DATABASE_URL: ${PROGRESS_SERVICE_DATABASE_URL}
+      KAFKA_BROKER: kafka:29092
 
-  # notification-service:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/notification-service/Dockerfile
-  #   container_name: notification-service
-  #   depends_on:
-  #     - notification-db
-  #     - kafka
-  #   environment:
-  #     DATABASE_URL: ${NOTIFICATION_SERVICE_DATABASE_URL}
-  #     KAFKA_BROKER: kafka:29092
+  notification-service:
+    build:
+      context: .
+      dockerfile: apps/notification-service/Dockerfile
+    container_name: notification-service
+    depends_on:
+      - notification-db
+      - kafka
+    environment:
+      DATABASE_URL: ${NOTIFICATION_SERVICE_DATABASE_URL}
+      KAFKA_BROKER: kafka:29092
 
-  # analytics-service:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/analytics-service/Dockerfile
-  #   container_name: analytics-service
-  #   depends_on:
-  #     - analytics-db
-  #     - kafka
-  #   environment:
-  #     DATABASE_URL: ${ANALYTICS_SERVICE_DATABASE_URL}
-  #     KAFKA_BROKER: kafka:29092
+  analytics-service:
+    build:
+      context: .
+      dockerfile: apps/analytics-service/Dockerfile
+    container_name: analytics-service
+    depends_on:
+      - analytics-db
+      - kafka
+    environment:
+      DATABASE_URL: ${ANALYTICS_SERVICE_DATABASE_URL}
+      KAFKA_BROKER: kafka:29092
 
-  # media-service:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/media-service/Dockerfile
-  #   container_name: media-service
-  #   depends_on:
-  #     - media-db
-  #     - kafka
-  #   environment:
-  #     DATABASE_URL: ${MEDIA_SERVICE_DATABASE_URL}
-  #     KAFKA_BROKER: kafka:29092
+  media-service:
+    build:
+      context: .
+      dockerfile: apps/media-service/Dockerfile
+    container_name: media-service
+    depends_on:
+      - media-db
+      - kafka
+    environment:
+      DATABASE_URL: ${MEDIA_SERVICE_DATABASE_URL}
+      KAFKA_BROKER: kafka:29092
 
-  # vocabulary-service:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/vocabulary-service/Dockerfile
-  #   container_name: vocabulary-service
-  #   depends_on:
-  #     - vocabulary-db
-  #     - kafka
-  #   environment:
-  #     DATABASE_URL: ${VOCABULARY_SERVICE_DATABASE_URL}
-  #     KAFKA_BROKER: kafka:29092
+  vocabulary-service:
+    build:
+      context: .
+      dockerfile: apps/vocabulary-service/Dockerfile
+    container_name: vocabulary-service
+    depends_on:
+      - vocabulary-db
+      - kafka
+    environment:
+      DATABASE_URL: ${VOCABULARY_SERVICE_DATABASE_URL}
+      KAFKA_BROKER: kafka:29092
 
-  # quiz-service:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/quiz-service/Dockerfile
-  #   container_name: quiz-service
-  #   depends_on:
-  #     - quiz-db
-  #     - kafka
-  #   environment:
-  #     DATABASE_URL: ${QUIZ_SERVICE_DATABASE_URL}
-  #     KAFKA_BROKER: kafka:29092
+  quiz-service:
+    build:
+      context: .
+      dockerfile: apps/quiz-service/Dockerfile
+    container_name: quiz-service
+    depends_on:
+      - quiz-db
+      - kafka
+    environment:
+      DATABASE_URL: ${QUIZ_SERVICE_DATABASE_URL}
+      KAFKA_BROKER: kafka:29092
 
 volumes:
   user_db_data:
-  # lesson_db_data:
-  # progress_db_data:
-  # notification_db_data:
-  # analytics_db_data:
-  # media_db_data:
-  # vocabulary_db_data:
-  # quiz_db_data:
+  lesson_db_data:
+  progress_db_data:
+  notification_db_data:
+  analytics_db_data:
+  media_db_data:
+  vocabulary_db_data:
+  quiz_db_data:

@@ -6,6 +6,7 @@ WORKDIR /app
 COPY ../../package*.json ./
 COPY ../../nx.json ./
 COPY ../../tsconfig.base.json ./
+COPY ../../eslint.config.mjs ./
 COPY ../../apps/vocabulary-service ./apps/vocabulary-service
 COPY ../../libs ./libs
 COPY ../../.env ./.env

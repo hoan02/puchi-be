@@ -6,6 +6,7 @@ WORKDIR /app
 COPY ../../package*.json ./
 COPY ../../nx.json ./
 COPY ../../tsconfig.base.json ./
+COPY ../../eslint.config.mjs ./
 COPY ../../apps/media-service ./apps/media-service
 COPY ../../libs ./libs
 COPY ../../.env ./.env
@@ -32,5 +33,5 @@ COPY ../../proto ./proto
 # Copy .env from builder
 COPY --from=builder /app/.env ./.env
 
-EXPOSE 50053
+EXPOSE 50055
 CMD ["node", "dist/main.js"] 
