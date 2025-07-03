@@ -72,17 +72,22 @@ sequenceDiagram
 
 ## 🔧 Danh sách service
 
-| Service              | Port | Giao tiếp | REST Endpoint | gRPC | Kafka Event | Database        |
-| -------------------- | ---- | --------- | ------------- | ---- | ----------- | --------------- |
-| API Gateway          | 8000 | REST/gRPC | ✅            | ✅   | -           | -               |
-| User Service         | 8001 | gRPC      | -             | ✅   | ✅          | user-db         |
-| Lesson Service       | 8002 | gRPC      | -             | ✅   | ✅          | lesson-db       |
-| Progress Service     | 8003 | gRPC      | -             | ✅   | ✅          | progress-db     |
-| Media Service        | 8004 | gRPC      | -             | ✅   | ✅          | media-db        |
-| Notification Service | 8005 | gRPC      | -             | ✅   | ✅          | notification-db |
-| Vocabulary Service   | 8006 | gRPC      | -             | ✅   | ✅          | vocabulary-db   |
-| Quiz Service         | 8007 | gRPC      | -             | ✅   | ✅          | quiz-db         |
-| Analytics Service    | 8008 | gRPC      | -             | ✅   | ✅          | analytics-db    |
+| Service              | Port gRPC | Port HTTP | Vai trò/Chức năng           | Database        |
+| -------------------- | --------- | --------- | --------------------------- | --------------- |
+| API Gateway          | -         | 9000      | Cổng vào duy nhất, REST API | -               |
+| User Service         | 50051     | -         | Quản lý user                | user-db         |
+| Lesson Service       | 50052     | -         | Quản lý bài học             | lesson-db       |
+| Progress Service     | 50053     | -         | Quản lý tiến trình          | progress-db     |
+| Notification Service | 50054     | -         | Thông báo                   | notification-db |
+| Media Service        | 50055     | -         | Quản lý media               | media-db        |
+| Quiz Service         | 50056     | -         | Quản lý quiz                | quiz-db         |
+| Vocabulary Service   | 50057     | -         | Quản lý từ vựng             | vocabulary-db   |
+| Analytics Service    | 50058     | -         | Phân tích dữ liệu           | analytics-db    |
+
+> **Lưu ý:**
+>
+> - Chỉ API Gateway expose port HTTP (9000) ra ngoài cho FE/client truy cập.
+> - Các service khác chỉ expose port gRPC nội bộ để gateway gọi vào.
 
 ## 🚀 Khởi động hệ thống
 
@@ -96,44 +101,49 @@ npm install
 
 Tạo file `.env.local` hoặc copy từ `env.local.example.txt` và chỉnh sửa thông tin kết nối DB, Kafka, gRPC endpoint cho từng service.
 
-### 3. Khởi động Docker (Kafka, Postgres, Kafka UI...)
+### 3. Khởi động Docker (Kafka, Postgres, Kafka UI, các service backend...)
 
 ```bash
 docker-compose up -d
 ```
 
+> **Lưu ý:**
+>
+> - Chỉ cần expose port cho api-gateway (9000:9000). Các service backend khác không cần port ra ngoài.
+> - FE nên chạy ở port 3000, BE (gateway) ở 9000.
+
 ### 4. Migrate database cho từng service (ví dụ user-service)
 
-```bash
-npx prisma migrate deploy --schema=apps/user-service/prisma/schema.prisma
-npx prisma generate --schema=apps/user-service/prisma/schema.prisma
-```
-
-### 5. Build toàn bộ services
+Sau khi các container đã chạy, bạn cần migrate database cho từng service:
 
 ```bash
-npm run build
+docker-compose exec user-service npx prisma migrate deploy --schema=apps/user-service/prisma/schema.prisma
+docker-compose exec user-service npx prisma generate --schema=apps/user-service/prisma/schema.prisma
+# Lặp lại cho các service khác (lesson-service, progress-service, ...)
 ```
 
-### 6. Khởi động từng service (dev)
+### 5. Kiểm tra hệ thống
 
-```bash
-nx serve api-gateway
-nx serve user-service
-nx serve lesson-service
-# ... các service khác
-```
+- Truy cập gateway: http://localhost:9000/api/health
+- Swagger docs: http://localhost:9000/api-docs
+- Kafka UI: http://localhost:8080
+
+### 6. Deploy lên Coolify
+
+- Tạo app stack mới, chọn file `docker-compose.yml` ở project root.
+- Coolify sẽ tự build và khởi động toàn bộ hệ thống.
+- Sau khi deploy, SSH vào container từng service để migrate database như bước 4.
 
 ## 🧪 Testing
 
 - **Health check:**
   ```
-  curl http://localhost:8000/api/health
+  curl http://localhost:9000/api/health
   ```
 - **Test REST endpoint (qua API Gateway):**
   ```
-  curl http://localhost:8000/api/lessons/list
-  curl http://localhost:8000/api/users/profile
+  curl http://localhost:9000/api/lessons/list
+  curl http://localhost:9000/api/users/profile
   ```
 - **Test gRPC:**  
   Sử dụng các file proto trong thư mục `/proto` để test với Postman hoặc grpcurl.
