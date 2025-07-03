@@ -182,89 +182,89 @@ services:
       DATABASE_URL: ${USER_SERVICE_DATABASE_URL}
       KAFKA_BROKER: kafka:29092
 
-  lesson-service:
-    build:
-      context: .
-      dockerfile: apps/lesson-service/Dockerfile
-    container_name: lesson-service
-    depends_on:
-      - lesson-db
-      - kafka
-    environment:
-      DATABASE_URL: ${LESSON_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+  # lesson-service:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/lesson-service/Dockerfile
+  #   container_name: lesson-service
+  #   depends_on:
+  #     - lesson-db
+  #     - kafka
+  #   environment:
+  #     DATABASE_URL: ${LESSON_SERVICE_DATABASE_URL}
+  #     KAFKA_BROKER: kafka:29092
 
-  progress-service:
-    build:
-      context: .
-      dockerfile: apps/progress-service/Dockerfile
-    container_name: progress-service
-    depends_on:
-      - progress-db
-      - kafka
-    environment:
-      DATABASE_URL: ${PROGRESS_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+  # progress-service:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/progress-service/Dockerfile
+  #   container_name: progress-service
+  #   depends_on:
+  #     - progress-db
+  #     - kafka
+  #   environment:
+  #     DATABASE_URL: ${PROGRESS_SERVICE_DATABASE_URL}
+  #     KAFKA_BROKER: kafka:29092
 
-  notification-service:
-    build:
-      context: .
-      dockerfile: apps/notification-service/Dockerfile
-    container_name: notification-service
-    depends_on:
-      - notification-db
-      - kafka
-    environment:
-      DATABASE_URL: ${NOTIFICATION_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+  # notification-service:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/notification-service/Dockerfile
+  #   container_name: notification-service
+  #   depends_on:
+  #     - notification-db
+  #     - kafka
+  #   environment:
+  #     DATABASE_URL: ${NOTIFICATION_SERVICE_DATABASE_URL}
+  #     KAFKA_BROKER: kafka:29092
 
-  analytics-service:
-    build:
-      context: .
-      dockerfile: apps/analytics-service/Dockerfile
-    container_name: analytics-service
-    depends_on:
-      - analytics-db
-      - kafka
-    environment:
-      DATABASE_URL: ${ANALYTICS_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+  # analytics-service:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/analytics-service/Dockerfile
+  #   container_name: analytics-service
+  #   depends_on:
+  #     - analytics-db
+  #     - kafka
+  #   environment:
+  #     DATABASE_URL: ${ANALYTICS_SERVICE_DATABASE_URL}
+  #     KAFKA_BROKER: kafka:29092
 
-  media-service:
-    build:
-      context: .
-      dockerfile: apps/media-service/Dockerfile
-    container_name: media-service
-    depends_on:
-      - media-db
-      - kafka
-    environment:
-      DATABASE_URL: ${MEDIA_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+  # media-service:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/media-service/Dockerfile
+  #   container_name: media-service
+  #   depends_on:
+  #     - media-db
+  #     - kafka
+  #   environment:
+  #     DATABASE_URL: ${MEDIA_SERVICE_DATABASE_URL}
+  #     KAFKA_BROKER: kafka:29092
 
-  vocabulary-service:
-    build:
-      context: .
-      dockerfile: apps/vocabulary-service/Dockerfile
-    container_name: vocabulary-service
-    depends_on:
-      - vocabulary-db
-      - kafka
-    environment:
-      DATABASE_URL: ${VOCABULARY_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+  # vocabulary-service:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/vocabulary-service/Dockerfile
+  #   container_name: vocabulary-service
+  #   depends_on:
+  #     - vocabulary-db
+  #     - kafka
+  #   environment:
+  #     DATABASE_URL: ${VOCABULARY_SERVICE_DATABASE_URL}
+  #     KAFKA_BROKER: kafka:29092
 
-  quiz-service:
-    build:
-      context: .
-      dockerfile: apps/quiz-service/Dockerfile
-    container_name: quiz-service
-    depends_on:
-      - quiz-db
-      - kafka
-    environment:
-      DATABASE_URL: ${QUIZ_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+  # quiz-service:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/quiz-service/Dockerfile
+  #   container_name: quiz-service
+  #   depends_on:
+  #     - quiz-db
+  #     - kafka
+  #   environment:
+  #     DATABASE_URL: ${QUIZ_SERVICE_DATABASE_URL}
+  #     KAFKA_BROKER: kafka:29092
 
 volumes:
   user_db_data:
