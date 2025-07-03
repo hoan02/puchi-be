@@ -143,8 +143,8 @@ services:
 
   api-gateway:
     build:
-      context: .
-      dockerfile: apps/api-gateway/Dockerfile
+      context: apps/api-gateway
+      dockerfile: Dockerfile
     container_name: api-gateway
     depends_on:
       - user-service
@@ -172,8 +172,8 @@ services:
 
   user-service:
     build:
-      context: .
-      dockerfile: apps/user-service/Dockerfile
+      context: apps/user-service
+      dockerfile: Dockerfile
     container_name: user-service
     depends_on:
       - user-db
@@ -184,8 +184,8 @@ services:
 
   lesson-service:
     build:
-      context: .
-      dockerfile: apps/lesson-service/Dockerfile
+      context: apps/lesson-service
+      dockerfile: Dockerfile
     container_name: lesson-service
     depends_on:
       - lesson-db
@@ -196,8 +196,8 @@ services:
 
   progress-service:
     build:
-      context: .
-      dockerfile: apps/progress-service/Dockerfile
+      context: apps/progress-service
+      dockerfile: Dockerfile
     container_name: progress-service
     depends_on:
       - progress-db
@@ -208,8 +208,8 @@ services:
 
   notification-service:
     build:
-      context: .
-      dockerfile: apps/notification-service/Dockerfile
+      context: apps/notification-service
+      dockerfile: Dockerfile
     container_name: notification-service
     depends_on:
       - notification-db
@@ -220,8 +220,8 @@ services:
 
   analytics-service:
     build:
-      context: .
-      dockerfile: apps/analytics-service/Dockerfile
+      context: apps/analytics-service
+      dockerfile: Dockerfile
     container_name: analytics-service
     depends_on:
       - analytics-db
@@ -232,8 +232,8 @@ services:
 
   media-service:
     build:
-      context: .
-      dockerfile: apps/media-service/Dockerfile
+      context: apps/media-service
+      dockerfile: Dockerfile
     container_name: media-service
     depends_on:
       - media-db
@@ -244,8 +244,8 @@ services:
 
   vocabulary-service:
     build:
-      context: .
-      dockerfile: apps/vocabulary-service/Dockerfile
+      context: apps/vocabulary-service
+      dockerfile: Dockerfile
     container_name: vocabulary-service
     depends_on:
       - vocabulary-db
@@ -256,8 +256,8 @@ services:
 
   quiz-service:
     build:
-      context: .
-      dockerfile: apps/quiz-service/Dockerfile
+      context: apps/quiz-service
+      dockerfile: Dockerfile
     container_name: quiz-service
     depends_on:
       - quiz-db
