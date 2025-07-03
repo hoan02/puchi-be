@@ -4,13 +4,13 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package.json, lockfile, nx.json, tsconfig.base.json
-COPY ../../package*.json ./
-COPY ../../nx.json ./
-COPY ../../tsconfig.base.json ./
-COPY ../../eslint.config.mjs ./
-COPY ../../apps/notification-service ./apps/notification-service
-COPY ../../libs ./libs
-COPY ../../.env ./.env
+COPY package*.json ./
+COPY nx.json ./
+COPY tsconfig.base.json ./
+COPY eslint.config.mjs ./
+COPY apps/notification-service ./apps/notification-service
+COPY libs ./libs
+COPY .env ./.env
 
 # Cài dependencies
 RUN npm install
@@ -29,7 +29,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist/apps/notification-service ./dist
 
 # Copy file proto nếu cần
-COPY ../../proto ./proto
+COPY proto ./proto
 
 # Copy .env from builder
 COPY --from=builder /app/.env ./.env
