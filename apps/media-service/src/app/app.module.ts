@@ -1,18 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { DatabaseModule } from '@puchi-be/database';
+import { PrismaModule } from '@libs/database';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ClientsModule } from '@nestjs/microservices';
-import { MEDIA_CLIENT_KAFKA_MODULE } from '@puchi-be/shared';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    ClientsModule.register([MEDIA_CLIENT_KAFKA_MODULE]),
-    DatabaseModule,
+    PrismaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

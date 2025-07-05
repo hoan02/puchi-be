@@ -74,7 +74,7 @@ sequenceDiagram
 
 | Service              | Port gRPC | Port HTTP | Vai trò/Chức năng           | Database        |
 | -------------------- | --------- | --------- | --------------------------- | --------------- |
-| API Gateway          | -         | 9000      | Cổng vào duy nhất, REST API | -               |
+| API Gateway          | -         | 8000      | Cổng vào duy nhất, REST API | -               |
 | User Service         | 50051     | -         | Quản lý user                | user-db         |
 | Lesson Service       | 50052     | -         | Quản lý bài học             | lesson-db       |
 | Progress Service     | 50053     | -         | Quản lý tiến trình          | progress-db     |
@@ -101,16 +101,22 @@ npm install
 
 Tạo file `.env.local` hoặc copy từ `env.local.example.txt` và chỉnh sửa thông tin kết nối DB, Kafka, gRPC endpoint cho từng service.
 
-### 3. Khởi động Docker (Kafka, Postgres, Kafka UI, các service backend...)
+### 3. Khởi động Docker (Bitnami Kafka, Postgres, Kafka UI, các service backend...)
 
 ```bash
-docker-compose -f docker-compose.yaml up -d
+# Khởi động với Bitnami Kafka (mặc định)
+docker-compose up -d
+
+# Hoặc sử dụng script test migration
+chmod +x test-kafka-migration.sh
+./test-kafka-migration.sh
 ```
 
 > **Lưu ý:**
 >
-> - Chỉ cần expose port cho api-gateway (9000:9000). Các service backend khác không cần port ra ngoài.
-> - FE nên chạy ở port 3000, BE (gateway) ở 9000.
+> - Dự án đã chuyển sang sử dụng **Bitnami Kafka** thay vì Confluent Kafka để đơn giản hóa cấu hình
+> - Chỉ cần expose port cho api-gateway (8000:8000). Các service backend khác không cần port ra ngoài.
+> - FE nên chạy ở port 3000, BE (gateway) ở 8000.
 
 ### 4. Migrate database cho từng service (ví dụ user-service)
 
@@ -124,9 +130,9 @@ docker-compose -f docker-compose.yaml exec user-service npx prisma generate --sc
 
 ### 5. Kiểm tra hệ thống
 
-- Truy cập gateway: http://localhost:9000/api/health
-- Swagger docs: http://localhost:9000/api-docs
-- Kafka UI: http://localhost:8080
+- Truy cập gateway: http://localhost:8000/api/health
+- Swagger docs: http://localhost:8000/api-docs
+- Kafka UI: http://localhost:8081
 
 ### 6. Deploy lên Coolify
 
@@ -138,12 +144,12 @@ docker-compose -f docker-compose.yaml exec user-service npx prisma generate --sc
 
 - **Health check:**
   ```
-  curl http://localhost:9000/api/health
+  curl http://localhost:8000/api/health
   ```
 - **Test REST endpoint (qua API Gateway):**
   ```
-  curl http://localhost:9000/api/lessons/list
-  curl http://localhost:9000/api/users/profile
+  curl http://localhost:8000/api/lessons/list
+  curl http://localhost:8000/api/users/profile
   ```
 - **Test gRPC:**  
   Sử dụng các file proto trong thư mục `/proto` để test với Postman hoặc grpcurl.

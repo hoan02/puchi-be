@@ -1,53 +1,5 @@
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: zookeeper
-spec:
-  ports:
-    - port: 2181
-      targetPort: 2181
-  selector:
-    app: zookeeper
-  clusterIP: None
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: zookeeper
-spec:
-  serviceName: zookeeper
-  replicas: 1
-  selector:
-    matchLabels:
-      app: zookeeper
-  template:
-    metadata:
-      labels:
-        app: zookeeper
-    spec:
-      containers:
-        - name: zookeeper
-          image: confluentinc/cp-zookeeper:7.4.0
-          ports:
-            - containerPort: 2181
-          env:
-            - name: ZOOKEEPER_CLIENT_PORT
-              value: '2181'
-            - name: ZOOKEEPER_TICK_TIME
-              value: '2000'
-          volumeMounts:
-            - name: zookeeper-data
-              mountPath: /var/lib/zookeeper/data
-  volumeClaimTemplates:
-    - metadata:
-        name: zookeeper-data
-      spec:
-        accessModes: ['ReadWriteOnce']
-        resources:
-          requests:
-            storage: 1Gi
----
+# Kafka Infrastructure - Sử dụng Bitnami Kafka với KRaft mode
 apiVersion: v1
 kind: Service
 metadata:
@@ -60,6 +12,9 @@ spec:
     - name: kafka-29092
       port: 29092
       targetPort: 29092
+    - name: kafka-jmx
+      port: 9101
+      targetPort: 9101
   selector:
     app: kafka
   clusterIP: None
@@ -81,202 +36,664 @@ spec:
     spec:
       containers:
         - name: kafka
-          image: confluentinc/cp-kafka:7.4.0
+          image: bitnami/kafka:latest
           ports:
             - containerPort: 9092
             - containerPort: 29092
+            - containerPort: 9101
           env:
-            - name: KAFKA_BROKER_ID
+            # KRaft mode configuration
+            - name: KAFKA_ENABLE_KRAFT
+              value: 'yes'
+            - name: KAFKA_CFG_NODE_ID
               value: '1'
-            - name: KAFKA_ZOOKEEPER_CONNECT
-              value: 'zookeeper:2181'
-            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
-              value: 'PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
-            - name: KAFKA_ADVERTISED_LISTENERS
-              value: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
-            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+            - name: KAFKA_CFG_PROCESS_ROLES
+              value: 'broker,controller'
+            - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
+              value: '1@kafka:9093'
+            - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES
+              value: 'CONTROLLER'
+
+            # Listener configuration
+            - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
+              value: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+            - name: KAFKA_CFG_LISTENERS
+              value: 'PLAINTEXT://:9092,CONTROLLER://:9093'
+            - name: KAFKA_CFG_ADVERTISED_LISTENERS
+              value: 'PLAINTEXT://kafka:29092'
+            - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+              value: 'PLAINTEXT'
+
+            # Development settings
+            - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
+              value: 'true'
+            - name: KAFKA_CFG_DELETE_TOPIC_ENABLE
+              value: 'true'
+            - name: KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR
               value: '1'
-            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+            - name: KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR
               value: '1'
-            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+            - name: KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
               value: '1'
-            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+            - name: KAFKA_CFG_GROUP_INITIAL_REBALANCE_DELAY_MS
               value: '0'
-            - name: KAFKA_JMX_PORT
+
+            # JMX monitoring
+            - name: KAFKA_CFG_JMX_PORT
               value: '9101'
-            - name: KAFKA_JMX_HOSTNAME
+            - name: KAFKA_CFG_JMX_HOSTNAME
               value: 'localhost'
-            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-              value: 'true'
-            - name: KAFKA_DELETE_TOPIC_ENABLE
-              value: 'true'
+
+            # Security (cho phép plaintext trong development)
+            - name: ALLOW_PLAINTEXT_LISTENER
+              value: 'yes'
           volumeMounts:
             - name: kafka-data
-              mountPath: /var/lib/kafka/data
+              mountPath: /bitnami/kafka
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - kafka-topics.sh --bootstrap-server localhost:9092 --list
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - kafka-topics.sh --bootstrap-server localhost:9092 --list
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
   volumeClaimTemplates:
     - metadata:
         name: kafka-data
       spec:
         accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
         resources:
           requests:
             storage: 2Gi
 ---
-# Core Database
+# User Service Database
 apiVersion: v1
 kind: Service
 metadata:
-  name: core-db
+  name: user-db
 spec:
   ports:
     - port: 5432
       targetPort: 5432
   selector:
-    app: core-db
+    app: user-db
   clusterIP: None
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: core-db
+  name: user-db
 spec:
-  serviceName: core-db
+  serviceName: user-db
   replicas: 1
   selector:
     matchLabels:
-      app: core-db
+      app: user-db
   template:
     metadata:
       labels:
-        app: core-db
+        app: user-db
     spec:
       containers:
-        - name: core-db
-          image: postgres:15
+        - name: user-db
+          image: postgres:17
           ports:
             - containerPort: 5432
           env:
             - name: POSTGRES_DB
-              value: puchi_core
+              value: puchi_user_db
             - name: POSTGRES_USER
-              value: puchi_user
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
             - name: POSTGRES_PASSWORD
-              value: puchi_password
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
           volumeMounts:
-            - name: core-db-data
+            - name: user-db-data
               mountPath: /var/lib/postgresql/data
   volumeClaimTemplates:
     - metadata:
-        name: core-db-data
+        name: user-db-data
       spec:
         accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
         resources:
           requests:
-            storage: 2Gi
+            storage: 1Gi
 ---
-# Support Database
+# Lesson Service Database
 apiVersion: v1
 kind: Service
 metadata:
-  name: support-db
+  name: lesson-db
 spec:
   ports:
     - port: 5432
       targetPort: 5432
   selector:
-    app: support-db
+    app: lesson-db
   clusterIP: None
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: support-db
+  name: lesson-db
 spec:
-  serviceName: support-db
+  serviceName: lesson-db
   replicas: 1
   selector:
     matchLabels:
-      app: support-db
+      app: lesson-db
   template:
     metadata:
       labels:
-        app: support-db
+        app: lesson-db
     spec:
       containers:
-        - name: support-db
-          image: postgres:15
+        - name: lesson-db
+          image: postgres:17
           ports:
             - containerPort: 5432
           env:
             - name: POSTGRES_DB
-              value: puchi_support
+              value: puchi_lesson_db
             - name: POSTGRES_USER
-              value: puchi_user
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
             - name: POSTGRES_PASSWORD
-              value: puchi_password
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
           volumeMounts:
-            - name: support-db-data
+            - name: lesson-db-data
               mountPath: /var/lib/postgresql/data
   volumeClaimTemplates:
     - metadata:
-        name: support-db-data
+        name: lesson-db-data
       spec:
         accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
         resources:
           requests:
-            storage: 2Gi
+            storage: 1Gi
 ---
-# Feature Database
+# Progress Service Database
 apiVersion: v1
 kind: Service
 metadata:
-  name: feature-db
+  name: progress-db
 spec:
   ports:
     - port: 5432
       targetPort: 5432
   selector:
-    app: feature-db
+    app: progress-db
   clusterIP: None
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: feature-db
+  name: progress-db
 spec:
-  serviceName: feature-db
+  serviceName: progress-db
   replicas: 1
   selector:
     matchLabels:
-      app: feature-db
+      app: progress-db
   template:
     metadata:
       labels:
-        app: feature-db
+        app: progress-db
     spec:
       containers:
-        - name: feature-db
-          image: postgres:15
+        - name: progress-db
+          image: postgres:17
           ports:
             - containerPort: 5432
           env:
             - name: POSTGRES_DB
-              value: puchi_feature
+              value: puchi_progress_db
             - name: POSTGRES_USER
-              value: puchi_user
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
             - name: POSTGRES_PASSWORD
-              value: puchi_password
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
           volumeMounts:
-            - name: feature-db-data
+            - name: progress-db-data
               mountPath: /var/lib/postgresql/data
   volumeClaimTemplates:
     - metadata:
-        name: feature-db-data
+        name: progress-db-data
       spec:
         accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
         resources:
           requests:
-            storage: 2Gi
+            storage: 1Gi
+---
+# Notification Service Database
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-db
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: notification-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: notification-db
+spec:
+  serviceName: notification-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-db
+  template:
+    metadata:
+      labels:
+        app: notification-db
+    spec:
+      containers:
+        - name: notification-db
+          image: postgres:17
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: puchi_notification_db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+          volumeMounts:
+            - name: notification-db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: notification-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
+        resources:
+          requests:
+            storage: 1Gi
+---
+# Analytics Service Database (MongoDB)
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-db
+spec:
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: analytics-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: analytics-db
+spec:
+  serviceName: analytics-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-db
+  template:
+    metadata:
+      labels:
+        app: analytics-db
+    spec:
+      containers:
+        - name: analytics-db
+          image: mongo:8.0
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: password
+            - name: MONGO_INITDB_DATABASE
+              value: puchi_analytics_db
+          volumeMounts:
+            - name: analytics-db-data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: analytics-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
+        resources:
+          requests:
+            storage: 1Gi
+---
+# Media Service Database (MongoDB)
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-db
+spec:
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: media-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: media-db
+spec:
+  serviceName: media-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-db
+  template:
+    metadata:
+      labels:
+        app: media-db
+    spec:
+      containers:
+        - name: media-db
+          image: mongo:8.0
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: password
+            - name: MONGO_INITDB_DATABASE
+              value: puchi_media_db
+          volumeMounts:
+            - name: media-db-data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: media-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
+        resources:
+          requests:
+            storage: 1Gi
+---
+# Vocabulary Service Database
+apiVersion: v1
+kind: Service
+metadata:
+  name: vocabulary-db
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: vocabulary-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: vocabulary-db
+spec:
+  serviceName: vocabulary-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vocabulary-db
+  template:
+    metadata:
+      labels:
+        app: vocabulary-db
+    spec:
+      containers:
+        - name: vocabulary-db
+          image: postgres:17
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: puchi_vocabulary_db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+          volumeMounts:
+            - name: vocabulary-db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: vocabulary-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
+        resources:
+          requests:
+            storage: 1Gi
+---
+# Quiz Service Database (MongoDB)
+apiVersion: v1
+kind: Service
+metadata:
+  name: quiz-db
+spec:
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: quiz-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: quiz-db
+spec:
+  serviceName: quiz-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: quiz-db
+  template:
+    metadata:
+      labels:
+        app: quiz-db
+    spec:
+      containers:
+        - name: quiz-db
+          image: mongo:8.0
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: password
+            - name: MONGO_INITDB_DATABASE
+              value: puchi_quiz_db
+          volumeMounts:
+            - name: quiz-db-data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: quiz-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
+        resources:
+          requests:
+            storage: 1Gi
+# Kafka UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-ui
+  template:
+    metadata:
+      labels:
+        app: kafka-ui
+    spec:
+      containers:
+        - name: kafka-ui
+          image: provectuslabs/kafka-ui:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KAFKA_CLUSTERS_0_NAME
+              value: 'local'
+            - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
+              value: 'kafka:9092'
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-ui
+spec:
+  selector:
+    app: kafka-ui
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8080
+  type: ClusterIP
+---
+# MongoDB Express UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-express
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-express
+  template:
+    metadata:
+      labels:
+        app: mongo-express
+    spec:
+      containers:
+        - name: mongo-express
+          image: mongo-express:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: ME_CONFIG_MONGODB_ADMINUSERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: username
+            - name: ME_CONFIG_MONGODB_ADMINPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: password
+            - name: ME_CONFIG_MONGODB_URL
+              value: 'mongodb://puchi_user:123456@analytics-db:27017/'
+            - name: ME_CONFIG_BASICAUTH_USERNAME
+              value: 'admin'
+            - name: ME_CONFIG_BASICAUTH_PASSWORD
+              value: 'admin123'
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-express
+spec:
+  selector:
+    app: mongo-express
+  ports:
+    - protocol: TCP
+      port: 8082
+      targetPort: 8081
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: ConfigMap

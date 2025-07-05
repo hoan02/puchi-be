@@ -24,13 +24,58 @@ spec:
             - name: USER_SERVICE_GRPC_URL
               valueFrom:
                 configMapKeyRef:
-                  name: microservice-config
-                  key: userServiceGrpcUrl
+                  name: puchi-config
+                  key: USER_SERVICE_GRPC_URL
             - name: LESSON_SERVICE_GRPC_URL
               valueFrom:
                 configMapKeyRef:
-                  name: microservice-config
-                  key: lessonServiceGrpcUrl
+                  name: puchi-config
+                  key: LESSON_SERVICE_GRPC_URL
+            - name: PROGRESS_SERVICE_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: puchi-config
+                  key: PROGRESS_SERVICE_GRPC_URL
+            - name: NOTIFICATION_SERVICE_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: puchi-config
+                  key: NOTIFICATION_SERVICE_GRPC_URL
+            - name: MEDIA_SERVICE_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: puchi-config
+                  key: MEDIA_SERVICE_GRPC_URL
+            - name: QUIZ_SERVICE_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: puchi-config
+                  key: QUIZ_SERVICE_GRPC_URL
+            - name: VOCABULARY_SERVICE_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: puchi-config
+                  key: VOCABULARY_SERVICE_GRPC_URL
+            - name: ANALYTICS_SERVICE_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: puchi-config
+                  key: ANALYTICS_SERVICE_GRPC_URL
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: puchi-config
+                  key: KAFKA_BROKERS
+            - name: CLERK_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: clerk-secret
+                  key: CLERK_PUBLISHABLE_KEY
+            - name: CLERK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: clerk-secret
+                  key: CLERK_SECRET_KEY
           resources:
             requests:
               cpu: '100m'
@@ -80,7 +125,7 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: hoanit/user-service:latest
+          image: hoanit/user-service:v1.0.0
           ports:
             - containerPort: 8001
             - containerPort: 50051
@@ -89,6 +134,30 @@ spec:
               value: 'kafka:29092'
             - name: PORT
               value: '8001'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-urls-secret
+                  key: USER_SERVICE_DATABASE_URL
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -122,7 +191,7 @@ spec:
     spec:
       containers:
         - name: lesson-service
-          image: lesson-service:latest
+          image: hoanit/lesson-service:v1.0.0
           ports:
             - containerPort: 8002
             - containerPort: 50052
@@ -131,6 +200,30 @@ spec:
               value: 'kafka:29092'
             - name: PORT
               value: '8002'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-urls-secret
+                  key: LESSON_SERVICE_DATABASE_URL
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -164,7 +257,7 @@ spec:
     spec:
       containers:
         - name: progress-service
-          image: progress-service:latest
+          image: hoanit/progress-service:v1.0.0
           ports:
             - containerPort: 8003
             - containerPort: 50053
@@ -173,6 +266,30 @@ spec:
               value: 'kafka:29092'
             - name: PORT
               value: '8003'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-urls-secret
+                  key: PROGRESS_SERVICE_DATABASE_URL
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -206,7 +323,7 @@ spec:
     spec:
       containers:
         - name: media-service
-          image: media-service:latest
+          image: hoanit/media-service:v1.0.0
           ports:
             - containerPort: 8004
             - containerPort: 50055
@@ -215,6 +332,30 @@ spec:
               value: 'kafka:29092'
             - name: PORT
               value: '8004'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-urls-secret
+                  key: MEDIA_SERVICE_DATABASE_URL
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8004
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8004
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -248,7 +389,7 @@ spec:
     spec:
       containers:
         - name: notification-service
-          image: notification-service:latest
+          image: hoanit/notification-service:v1.0.0
           ports:
             - containerPort: 8005
             - containerPort: 50054
@@ -257,6 +398,30 @@ spec:
               value: 'kafka:29092'
             - name: PORT
               value: '8005'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-urls-secret
+                  key: NOTIFICATION_SERVICE_DATABASE_URL
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8005
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8005
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -290,7 +455,7 @@ spec:
     spec:
       containers:
         - name: vocabulary-service
-          image: vocabulary-service:latest
+          image: hoanit/vocabulary-service:v1.0.0
           ports:
             - containerPort: 8006
             - containerPort: 50057
@@ -299,6 +464,30 @@ spec:
               value: 'kafka:29092'
             - name: PORT
               value: '8006'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-urls-secret
+                  key: VOCABULARY_SERVICE_DATABASE_URL
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -332,7 +521,7 @@ spec:
     spec:
       containers:
         - name: quiz-service
-          image: quiz-service:latest
+          image: hoanit/quiz-service:v1.0.0
           ports:
             - containerPort: 8007
             - containerPort: 50056
@@ -341,6 +530,30 @@ spec:
               value: 'kafka:29092'
             - name: PORT
               value: '8007'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-urls-secret
+                  key: QUIZ_SERVICE_DATABASE_URL
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8007
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8007
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -374,7 +587,7 @@ spec:
     spec:
       containers:
         - name: analytics-service
-          image: analytics-service:latest
+          image: hoanit/analytics-service:v1.0.0
           ports:
             - containerPort: 8008
             - containerPort: 50058
@@ -383,6 +596,30 @@ spec:
               value: 'kafka:29092'
             - name: PORT
               value: '8008'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-urls-secret
+                  key: ANALYTICS_SERVICE_DATABASE_URL
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '512Mi'
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8008
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8008
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service

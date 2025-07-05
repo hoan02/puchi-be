@@ -1,8 +1,28 @@
+// This is your Prisma schema file for Vocabulary Service
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("VOCABULARY_SERVICE_DATABASE_URL")
+  url      = env("DATABASE_URL")
+}
+
+model Vocabulary {
+  id           String    @id @default(cuid())
+  userId       String // Clerk user ID (reference to User service)
+  word         String
+  translation  String
+  context      String?
+  difficulty   String    @default("medium") // easy, medium, hard
+  mastered     Boolean   @default(false)
+  reviewCount  Int       @default(0)
+  lastReviewed DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, word])
+  @@map("vocabulary")
 }

@@ -1,8 +1,20 @@
+// This is your Prisma schema file for Quiz Service (MongoDB)
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("QUIZ_SERVICE_DATABASE_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Quiz {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  questions Json[]
+  settings  Json?
+
+  @@map("quizzes")
 }

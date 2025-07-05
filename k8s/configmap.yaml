@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: puchi-config
+  namespace: default
+data:
+  # Environment
+  NODE_ENV: 'production'
+
+  # Kafka Configuration
+  KAFKA_BROKERS: 'kafka:29092'
+
+  # gRPC Service URLs
+  USER_SERVICE_GRPC_URL: 'user-service:50051'
+  LESSON_SERVICE_GRPC_URL: 'lesson-service:50052'
+  PROGRESS_SERVICE_GRPC_URL: 'progress-service:50053'
+  NOTIFICATION_SERVICE_GRPC_URL: 'notification-service:50054'
+  MEDIA_SERVICE_GRPC_URL: 'media-service:50055'
+  QUIZ_SERVICE_GRPC_URL: 'quiz-service:50056'
+  VOCABULARY_SERVICE_GRPC_URL: 'vocabulary-service:50057'
+  ANALYTICS_SERVICE_GRPC_URL: 'analytics-service:50058'

@@ -1,0 +1,27 @@
+# Kubernetes Secrets - Không commit lên git
+secrets.yaml
+*-secrets.yaml
+secrets-*.yaml
+
+# Environment specific secrets
+secrets-prod.yaml
+secrets-dev.yaml
+secrets-staging.yaml
+
+# Local secrets
+local-secrets.yaml
+*.secret.yaml
+
+# Backup files
+*.bak
+*.backup
+
+# Ignore secrets file in production
+secrets.yaml
+
+# Ignore environment-specific files
+*-prod.yaml
+*-staging.yaml
+
+# Ignore local overrides
+local-*.yaml

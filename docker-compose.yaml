@@ -1,145 +1,178 @@
 version: '3.8'
 services:
-  # Kafka Infrastructure
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - '2181:2181'
-
+  # Kafka Infrastructure - Sử dụng Bitnami Kafka với KRaft mode
   kafka:
-    image: confluentinc/cp-kafka:7.4.0
+    image: bitnami/kafka:latest
     container_name: kafka
-    depends_on:
-      - zookeeper
     ports:
       - '9092:9092'
       - '9101:9101'
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_JMX_PORT: 9101
-      KAFKA_JMX_HOSTNAME: localhost
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      # KRaft mode configuration
+      KAFKA_ENABLE_KRAFT: 'yes'
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+
+      # Listener configuration
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_CFG_LISTENERS: 'PLAINTEXT://:9092,CONTROLLER://:9093'
+      KAFKA_CFG_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      # Development settings
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_CFG_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_CFG_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      # JMX monitoring
+      KAFKA_CFG_JMX_PORT: 9101
+      KAFKA_CFG_JMX_HOSTNAME: localhost
+
+      # Security (cho phép plaintext trong development)
+      ALLOW_PLAINTEXT_LISTENER: 'yes'
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'kafka-topics.sh --bootstrap-server localhost:9092 --list',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     ports:
       - '8081:8080'
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 
-  # Mỗi service một database riêng biệt
+  # PostgreSQL 17 - Cho các service cần ACID transactions
   user-db:
-    image: postgres:15
+    image: postgres:17
     container_name: user-db
     environment:
-      POSTGRES_DB: puchi_user
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: puchi_user_db
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
     ports:
       - '5432:5432'
     volumes:
       - user_db_data:/var/lib/postgresql/data
 
   lesson-db:
-    image: postgres:15
+    image: postgres:17
     container_name: lesson-db
     environment:
-      POSTGRES_DB: puchi_lesson
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: puchi_lesson_db
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
     ports:
       - '5433:5432'
     volumes:
       - lesson_db_data:/var/lib/postgresql/data
 
   progress-db:
-    image: postgres:15
+    image: postgres:17
     container_name: progress-db
     environment:
-      POSTGRES_DB: puchi_progress
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: puchi_progress_db
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
     ports:
       - '5434:5432'
     volumes:
       - progress_db_data:/var/lib/postgresql/data
 
   notification-db:
-    image: postgres:15
+    image: postgres:17
     container_name: notification-db
     environment:
-      POSTGRES_DB: puchi_notification
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: puchi_notification_db
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
     ports:
       - '5435:5432'
     volumes:
       - notification_db_data:/var/lib/postgresql/data
 
-  analytics-db:
-    image: postgres:15
-    container_name: analytics-db
-    environment:
-      POSTGRES_DB: puchi_analytics
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - '5436:5432'
-    volumes:
-      - analytics_db_data:/var/lib/postgresql/data
-
-  media-db:
-    image: postgres:15
-    container_name: media-db
-    environment:
-      POSTGRES_DB: puchi_media
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - '5437:5432'
-    volumes:
-      - media_db_data:/var/lib/postgresql/data
-
   vocabulary-db:
-    image: postgres:15
+    image: postgres:17
     container_name: vocabulary-db
     environment:
-      POSTGRES_DB: puchi_vocabulary
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: puchi_vocabulary_db
+      POSTGRES_USER: puchi_user
+      POSTGRES_PASSWORD: 123456
     ports:
       - '5438:5432'
     volumes:
       - vocabulary_db_data:/var/lib/postgresql/data
 
+  # MongoDB 8 - Cho các service cần flexible schema
+  analytics-db:
+    image: mongo:8.0
+    container_name: analytics-db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: puchi_user
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+      MONGO_INITDB_DATABASE: puchi_analytics_db
+    ports:
+      - '27017:27017'
+    volumes:
+      - analytics_db_data:/data/db
+
+  media-db:
+    image: mongo:8.0
+    container_name: media-db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: puchi_user
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+      MONGO_INITDB_DATABASE: puchi_media_db
+    ports:
+      - '27018:27017'
+    volumes:
+      - media_db_data:/data/db
+
   quiz-db:
-    image: postgres:15
+    image: mongo:8.0
     container_name: quiz-db
     environment:
-      POSTGRES_DB: puchi_quiz
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: puchi_user
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+      MONGO_INITDB_DATABASE: puchi_quiz_db
     ports:
-      - '5439:5432'
+      - '27019:27017'
     volumes:
-      - quiz_db_data:/var/lib/postgresql/data
+      - quiz_db_data:/data/db
+
+  # MongoDB UI
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    depends_on:
+      - analytics-db
+      - media-db
+      - quiz-db
+    ports:
+      - '8082:8081'
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: puchi_user
+      ME_CONFIG_MONGODB_ADMINPASSWORD: 123456
+      ME_CONFIG_MONGODB_URL: mongodb://puchi_user:123456@analytics-db:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
 
   api-gateway:
     build:
@@ -157,7 +190,7 @@ services:
       - quiz-service
       - kafka
     environment:
-      PORT: 9000
+      PORT: 8000
       USER_SERVICE_GRPC_URL: user-service:50051
       LESSON_SERVICE_GRPC_URL: lesson-service:50052
       PROGRESS_SERVICE_GRPC_URL: progress-service:50053
@@ -166,10 +199,11 @@ services:
       QUIZ_SERVICE_GRPC_URL: quiz-service:50056
       VOCABULARY_SERVICE_GRPC_URL: vocabulary-service:50057
       ANALYTICS_SERVICE_GRPC_URL: analytics-service:50058
-      KAFKA_BROKER: kafka:29092
+      KAFKA_BROKERS: kafka:9092
     ports:
-      - '9000:9000'
+      - '8000:8000'
 
+  # PostgreSQL Services
   user-service:
     build:
       context: apps/user-service
@@ -179,8 +213,8 @@ services:
       - user-db
       - kafka
     environment:
-      DATABASE_URL: ${USER_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+      DATABASE_URL: postgresql://puchi_user:123456@user-db:5432/puchi_user_db
+      KAFKA_BROKERS: kafka:9092
 
   lesson-service:
     build:
@@ -191,8 +225,8 @@ services:
       - lesson-db
       - kafka
     environment:
-      DATABASE_URL: ${LESSON_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+      DATABASE_URL: postgresql://puchi_user:123456@lesson-db:5432/puchi_lesson_db
+      KAFKA_BROKERS: kafka:9092
 
   progress-service:
     build:
@@ -203,8 +237,8 @@ services:
       - progress-db
       - kafka
     environment:
-      DATABASE_URL: ${PROGRESS_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+      DATABASE_URL: postgresql://puchi_user:123456@progress-db:5432/puchi_progress_db
+      KAFKA_BROKERS: kafka:9092
 
   notification-service:
     build:
@@ -215,32 +249,8 @@ services:
       - notification-db
       - kafka
     environment:
-      DATABASE_URL: ${NOTIFICATION_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
-
-  analytics-service:
-    build:
-      context: apps/analytics-service
-      dockerfile: Dockerfile
-    container_name: analytics-service
-    depends_on:
-      - analytics-db
-      - kafka
-    environment:
-      DATABASE_URL: ${ANALYTICS_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
-
-  media-service:
-    build:
-      context: apps/media-service
-      dockerfile: Dockerfile
-    container_name: media-service
-    depends_on:
-      - media-db
-      - kafka
-    environment:
-      DATABASE_URL: ${MEDIA_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+      DATABASE_URL: postgresql://puchi_user:123456@notification-db:5432/puchi_notification_db
+      KAFKA_BROKERS: kafka:9092
 
   vocabulary-service:
     build:
@@ -251,8 +261,33 @@ services:
       - vocabulary-db
       - kafka
     environment:
-      DATABASE_URL: ${VOCABULARY_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+      DATABASE_URL: postgresql://puchi_user:123456@vocabulary-db:5432/puchi_vocabulary_db
+      KAFKA_BROKERS: kafka:9092
+
+  # MongoDB Services
+  analytics-service:
+    build:
+      context: apps/analytics-service
+      dockerfile: Dockerfile
+    container_name: analytics-service
+    depends_on:
+      - analytics-db
+      - kafka
+    environment:
+      DATABASE_URL: mongodb://puchi_user:123456@analytics-db:27017/puchi_analytics_db
+      KAFKA_BROKERS: kafka:9092
+
+  media-service:
+    build:
+      context: apps/media-service
+      dockerfile: Dockerfile
+    container_name: media-service
+    depends_on:
+      - media-db
+      - kafka
+    environment:
+      DATABASE_URL: mongodb://puchi_user:123456@media-db:27017/puchi_media_db
+      KAFKA_BROKERS: kafka:9092
 
   quiz-service:
     build:
@@ -263,15 +298,16 @@ services:
       - quiz-db
       - kafka
     environment:
-      DATABASE_URL: ${QUIZ_SERVICE_DATABASE_URL}
-      KAFKA_BROKER: kafka:29092
+      DATABASE_URL: mongodb://puchi_user:123456@quiz-db:27017/puchi_quiz_db
+      KAFKA_BROKERS: kafka:9092
 
 volumes:
   user_db_data:
   lesson_db_data:
   progress_db_data:
   notification_db_data:
+  vocabulary_db_data:
   analytics_db_data:
   media_db_data:
-  vocabulary_db_data:
   quiz_db_data:
+  kafka_data:

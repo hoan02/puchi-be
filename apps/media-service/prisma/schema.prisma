@@ -1,8 +1,20 @@
+// This is your Prisma schema file for Media Service (MongoDB)
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("MEDIA_SERVICE_DATABASE_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Media {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  userId   String
+  filename String
+  metadata Json?
+
+  @@map("media")
 }

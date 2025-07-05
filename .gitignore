@@ -47,3 +47,5 @@ Thumbs.db
 .env.production
 .env.test
 .env.*
+
+scripts

@@ -4,18 +4,19 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package.json, lockfile, nx.json, tsconfig.base.json từ root
-COPY ../../package*.json ./
-COPY ../../nx.json ./
-COPY ../../tsconfig.base.json ./
-COPY ../../eslint.config.mjs ./
-COPY . .
-COPY ../libs ../libs
-COPY ../proto ../proto
-COPY ../../.env ./.env
+COPY package*.json ./
+COPY nx.json ./
+COPY tsconfig.base.json ./
+COPY eslint.config.mjs ./
+COPY apps/user-service ./apps/user-service
+COPY libs ./libs
+COPY proto ./proto
+# Copy .env if exists, otherwise copy env.example
+RUN if [ -f apps/user-service/.env ]; then cp apps/user-service/.env ./.env; else cp apps/user-service/env.example ./.env; fi
 
 # Cài dependencies
 RUN npm install
-RUN npx prisma generate --schema=prisma/schema.prisma
+RUN npx prisma generate --schema=apps/user-service/prisma/schema.prisma
 
 # Build chỉ project user-service
 RUN npx nx build user-service
@@ -31,7 +32,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist/apps/user-service ./dist
 
 # Copy file proto nếu cần
-COPY --from=builder /app/../proto /proto
+COPY --from=builder /app/proto /proto
 
 # Copy .env from builder
 COPY --from=builder /app/.env ./.env

@@ -1,8 +1,22 @@
+// This is your Prisma schema file for Analytics Service (MongoDB)
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("ANALYTICS_SERVICE_DATABASE_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Analytics {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  event     String
+  data      Json?
+  timestamp DateTime @default(now())
+  metadata  Json?
+
+  @@map("analytics")
 }
