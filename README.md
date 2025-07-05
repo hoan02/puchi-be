@@ -70,24 +70,25 @@ sequenceDiagram
 
 ---
 
-## 🔧 Danh sách service
+## 🗄️ Danh sách service
 
-| Service              | Port gRPC | Port HTTP | Vai trò/Chức năng           | Database        |
-| -------------------- | --------- | --------- | --------------------------- | --------------- |
-| API Gateway          | -         | 8000      | Cổng vào duy nhất, REST API | -               |
-| User Service         | 50051     | -         | Quản lý user                | user-db         |
-| Lesson Service       | 50052     | -         | Quản lý bài học             | lesson-db       |
-| Progress Service     | 50053     | -         | Quản lý tiến trình          | progress-db     |
-| Notification Service | 50054     | -         | Thông báo                   | notification-db |
-| Media Service        | 50055     | -         | Quản lý media               | media-db        |
-| Quiz Service         | 50056     | -         | Quản lý quiz                | quiz-db         |
-| Vocabulary Service   | 50057     | -         | Quản lý từ vựng             | vocabulary-db   |
-| Analytics Service    | 50058     | -         | Phân tích dữ liệu           | analytics-db    |
+| Service              | Port gRPC | Port HTTP | Vai trò/Chức năng           | Database   |
+| -------------------- | --------- | --------- | --------------------------- | ---------- |
+| API Gateway          | -         | 8000      | Cổng vào duy nhất, REST API | -          |
+| User Service         | 50051     | -         | Quản lý user                | PostgreSQL |
+| Lesson Service       | 50052     | -         | Quản lý bài học             | PostgreSQL |
+| Progress Service     | 50053     | -         | Quản lý tiến trình          | PostgreSQL |
+| Notification Service | 50054     | -         | Thông báo                   | PostgreSQL |
+| Media Service        | 50055     | -         | Quản lý media               | MongoDB    |
+| Quiz Service         | 50056     | -         | Quản lý quiz                | MongoDB    |
+| Vocabulary Service   | 50057     | -         | Quản lý từ vựng             | PostgreSQL |
+| Analytics Service    | 50058     | -         | Phân tích dữ liệu           | MongoDB    |
 
 > **Lưu ý:**
 >
-> - Chỉ API Gateway expose port HTTP (9000) ra ngoài cho FE/client truy cập.
+> - Chỉ API Gateway expose port HTTP (8000) ra ngoài cho FE/client truy cập.
 > - Các service khác chỉ expose port gRPC nội bộ để gateway gọi vào.
+> - Polyglot persistence: PostgreSQL 17 cho các service core, MongoDB 8 cho analytics, media, quiz.
 
 ## 🚀 Khởi động hệ thống
 
@@ -99,32 +100,27 @@ npm install
 
 ### 2. Cấu hình biến môi trường
 
-Tạo file `.env.local` hoặc copy từ `env.local.example.txt` và chỉnh sửa thông tin kết nối DB, Kafka, gRPC endpoint cho từng service.
+- Mỗi service có file `env.example` riêng trong thư mục của mình. Copy thành `.env` và chỉnh sửa thông tin kết nối DB, Kafka, gRPC endpoint cho từng service.
 
-### 3. Khởi động Docker (Bitnami Kafka, Postgres, Kafka UI, các service backend...)
+### 3. Khởi động Docker (Bitnami Kafka KRaft mode, PostgreSQL 17, MongoDB 8, Kafka UI, MongoDB Express...)
 
 ```bash
-# Khởi động với Bitnami Kafka (mặc định)
 docker-compose up -d
-
-# Hoặc sử dụng script test migration
-chmod +x test-kafka-migration.sh
-./test-kafka-migration.sh
 ```
 
 > **Lưu ý:**
 >
-> - Dự án đã chuyển sang sử dụng **Bitnami Kafka** thay vì Confluent Kafka để đơn giản hóa cấu hình
+> - Dự án đã chuyển sang sử dụng **Bitnami Kafka KRaft mode** (không còn Zookeeper).
 > - Chỉ cần expose port cho api-gateway (8000:8000). Các service backend khác không cần port ra ngoài.
 > - FE nên chạy ở port 3000, BE (gateway) ở 8000.
 
-### 4. Migrate database cho từng service (ví dụ user-service)
+### 4. Migrate database cho từng service
 
 Sau khi các container đã chạy, bạn cần migrate database cho từng service:
 
 ```bash
-docker-compose -f docker-compose.yaml exec user-service npx prisma migrate deploy --schema=apps/user-service/prisma/schema.prisma
-docker-compose -f docker-compose.yaml exec user-service npx prisma generate --schema=apps/user-service/prisma/schema.prisma
+docker-compose exec user-service npx prisma migrate deploy --schema=apps/user-service/prisma/schema.prisma
+docker-compose exec user-service npx prisma generate --schema=apps/user-service/prisma/schema.prisma
 # Lặp lại cho các service khác (lesson-service, progress-service, ...)
 ```
 
@@ -133,12 +129,7 @@ docker-compose -f docker-compose.yaml exec user-service npx prisma generate --sc
 - Truy cập gateway: http://localhost:8000/api/health
 - Swagger docs: http://localhost:8000/api-docs
 - Kafka UI: http://localhost:8081
-
-### 6. Deploy lên Coolify
-
-- Tạo app stack mới, chọn file `docker-compose.yaml` ở project root.
-- Coolify sẽ tự build và khởi động toàn bộ hệ thống.
-- Sau khi deploy, SSH vào container từng service để migrate database như bước 4.
+- MongoDB Express: http://localhost:8082
 
 ## 🧪 Testing
 
@@ -162,7 +153,7 @@ puchi-be/
 ├── libs/                    # Shared libraries (auth, utils, database, ...)
 ├── proto/                   # gRPC proto definitions
 ├── scripts/                 # Script build, deploy, test
-├── docker-compose.yaml      # Docker infra (Kafka, Postgres, ...)
+├── docker-compose.yaml      # Docker infra (Kafka, PostgreSQL, MongoDB, ...)
 └── README.md
 ```
 
@@ -170,8 +161,8 @@ puchi-be/
 
 - **NestJS**: Framework chính cho cả API Gateway và các service.
 - **gRPC**: Giao tiếp nội bộ giữa các service (proto chuẩn hóa).
-- **Kafka**: Event bất đồng bộ (notification, logging, ...).
-- **Prisma**: ORM cho PostgreSQL, mỗi service một schema riêng.
+- **Kafka (Bitnami KRaft mode)**: Event bất đồng bộ (notification, logging, ...).
+- **Prisma**: ORM cho cả PostgreSQL và MongoDB, mỗi service một schema riêng.
 - **Swagger**: Tự động sinh docs cho REST API tại API Gateway.
 - **Validation, Exception Filter, Response Interceptor**: Chuẩn hóa response, validate input, xử lý lỗi tập trung.
 - **Kubernetes-ready**: Healthcheck, resource limit, configmap, HPA, network policy.
@@ -193,7 +184,7 @@ puchi-be/
   docker-compose up -d
   ```
 
-## 🔐 Security
+## 🔒 Security
 
 - **Authentication**: Clerk tích hợp tại API Gateway.
 - **Authorization**: Role-based access control tại API Gateway.
@@ -203,7 +194,7 @@ puchi-be/
 
 - Các file tài liệu chi tiết đã được tích hợp vào README.md này.
 - File proto cho gRPC: `/proto/*.proto`
-- Ví dụ cấu hình env: `env.local.example.txt`
+- Ví dụ cấu hình env: `apps/*/env.example`
 
 ## 🤝 Đóng góp
 
