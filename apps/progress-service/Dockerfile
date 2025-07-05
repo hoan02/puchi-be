@@ -16,7 +16,7 @@ RUN if [ -f apps/progress-service/.env ]; then cp apps/progress-service/.env ./.
 
 # Cài dependencies
 RUN npm install
-RUN npx prisma generate --schema=prisma/schema.prisma
+RUN npx prisma generate --schema=apps/progress-service/prisma/schema.prisma
 
 # Build chỉ project progress-service
 RUN npx nx build progress-service

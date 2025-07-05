@@ -16,7 +16,7 @@ RUN if [ -f apps/media-service/.env ]; then cp apps/media-service/.env ./.env; e
 
 # Cài dependencies
 RUN npm install
-RUN npx prisma generate --schema=prisma/schema.prisma
+RUN npx prisma generate --schema=apps/media-service/prisma/schema.prisma
 
 # Build chỉ project media-service
 RUN npx nx build media-service
@@ -30,6 +30,9 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Copy dist của media-service từ builder
 COPY --from=builder /app/dist/apps/media-service ./dist
+
+# Copy Prisma client từ builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy file proto nếu cần
 COPY --from=builder /app/proto /proto

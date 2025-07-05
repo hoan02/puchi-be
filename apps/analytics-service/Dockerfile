@@ -17,6 +17,9 @@ RUN if [ -f apps/analytics-service/.env ]; then cp apps/analytics-service/.env .
 # Cài dependencies
 RUN npm install
 
+# Generate Prisma client
+RUN npx prisma generate --schema=apps/analytics-service/prisma/schema.prisma
+
 # Build chỉ project analytics-service
 RUN npx nx build analytics-service
 
@@ -29,6 +32,9 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Copy dist của analytics-service từ builder
 COPY --from=builder /app/dist/apps/analytics-service ./dist
+
+# Copy Prisma client từ builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy file proto nếu cần
 COPY --from=builder /app/proto /proto

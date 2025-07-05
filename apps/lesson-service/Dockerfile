@@ -16,7 +16,7 @@ RUN if [ -f apps/lesson-service/.env ]; then cp apps/lesson-service/.env ./.env;
 
 # Cài dependencies
 RUN npm install
-RUN npx prisma generate --schema=prisma/schema.prisma
+RUN npx prisma generate --schema=apps/lesson-service/prisma/schema.prisma
 
 # Build chỉ project lesson-service
 RUN npx nx build lesson-service

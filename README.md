@@ -7,7 +7,7 @@
 - **API Gateway**: Entry point duy nhất cho client (REST), xác thực, routing, tích hợp gRPC client tới các service.
 - **Các Microservice**: Giao tiếp nội bộ qua gRPC (sử dụng proto), chỉ expose gRPC endpoint.
 - **Kafka**: Dùng cho event bất đồng bộ (notification, logging, background jobs...).
-- **Database**: Mỗi service một database riêng biệt (PostgreSQL).
+- **Polyglot Persistence**: PostgreSQL 17 cho các service core, MongoDB 8 cho analytics, media, quiz.
 - **Chuẩn hóa response**: Tất cả API trả về `{ statusCode, message, data, timestamp }`.
 - **Kubernetes/Docker**: Sẵn sàng cho production, tối ưu healthcheck, resource, scaling.
 
@@ -16,6 +16,18 @@
 ```
 Client Apps → REST → API Gateway → gRPC → Microservices
                                  ↘ Kafka (event async)
+
+Databases:
+├── PostgreSQL 17 (Core Services)
+│   ├── User Service
+│   ├── Lesson Service
+│   ├── Progress Service
+│   ├── Notification Service
+│   └── Vocabulary Service
+└── MongoDB 8 (Analytics Services)
+    ├── Analytics Service
+    ├── Media Service
+    └── Quiz Service
 ```
 
 ## 🔄 Luồng đi từ Frontend & Mối quan hệ giữa các service
@@ -72,23 +84,23 @@ sequenceDiagram
 
 ## 🗄️ Danh sách service
 
-| Service              | Port gRPC | Port HTTP | Vai trò/Chức năng           | Database   |
-| -------------------- | --------- | --------- | --------------------------- | ---------- |
-| API Gateway          | -         | 8000      | Cổng vào duy nhất, REST API | -          |
-| User Service         | 50051     | -         | Quản lý user                | PostgreSQL |
-| Lesson Service       | 50052     | -         | Quản lý bài học             | PostgreSQL |
-| Progress Service     | 50053     | -         | Quản lý tiến trình          | PostgreSQL |
-| Notification Service | 50054     | -         | Thông báo                   | PostgreSQL |
-| Media Service        | 50055     | -         | Quản lý media               | MongoDB    |
-| Quiz Service         | 50056     | -         | Quản lý quiz                | MongoDB    |
-| Vocabulary Service   | 50057     | -         | Quản lý từ vựng             | PostgreSQL |
-| Analytics Service    | 50058     | -         | Phân tích dữ liệu           | MongoDB    |
+| Service              | Port gRPC | Port HTTP | Vai trò/Chức năng           | Database      |
+| -------------------- | --------- | --------- | --------------------------- | ------------- |
+| API Gateway          | -         | 8000      | Cổng vào duy nhất, REST API | -             |
+| User Service         | 50051     | -         | Quản lý user                | PostgreSQL 17 |
+| Lesson Service       | 50052     | -         | Quản lý bài học             | PostgreSQL 17 |
+| Progress Service     | 50053     | -         | Quản lý tiến trình          | PostgreSQL 17 |
+| Notification Service | 50054     | -         | Thông báo                   | PostgreSQL 17 |
+| Media Service        | 50055     | -         | Quản lý media               | MongoDB 8     |
+| Quiz Service         | 50056     | -         | Quản lý quiz                | MongoDB 8     |
+| Vocabulary Service   | 50057     | -         | Quản lý từ vựng             | PostgreSQL 17 |
+| Analytics Service    | 50058     | -         | Phân tích dữ liệu           | MongoDB 8     |
 
 > **Lưu ý:**
 >
 > - Chỉ API Gateway expose port HTTP (8000) ra ngoài cho FE/client truy cập.
 > - Các service khác chỉ expose port gRPC nội bộ để gateway gọi vào.
-> - Polyglot persistence: PostgreSQL 17 cho các service core, MongoDB 8 cho analytics, media, quiz.
+> - **Polyglot Persistence**: PostgreSQL 17 cho các service core (ACID transactions), MongoDB 8 cho analytics, media, quiz (flexible schema).
 
 ## 🚀 Khởi động hệ thống
 
@@ -102,34 +114,32 @@ npm install
 
 - Mỗi service có file `env.example` riêng trong thư mục của mình. Copy thành `.env` và chỉnh sửa thông tin kết nối DB, Kafka, gRPC endpoint cho từng service.
 
-### 3. Khởi động Docker (Bitnami Kafka KRaft mode, PostgreSQL 17, MongoDB 8, Kafka UI, MongoDB Express...)
+### 3. Khởi động Docker (Bitnami Kafka KRaft mode, PostgreSQL 17, MongoDB 8)
 
 ```bash
+# Khởi động toàn bộ hệ thống
 docker-compose up -d
+
+# Hoặc khởi động từng phần
+docker-compose up -d kafka postgresql mongodb
+docker-compose up -d user-service lesson-service progress-service
+docker-compose up -d analytics-service media-service quiz-service
 ```
 
 > **Lưu ý:**
 >
 > - Dự án đã chuyển sang sử dụng **Bitnami Kafka KRaft mode** (không còn Zookeeper).
+> - **PostgreSQL 17**: Cho các service core cần ACID transactions.
+> - **MongoDB 8**: Cho các service analytics, media, quiz cần flexible schema.
 > - Chỉ cần expose port cho api-gateway (8000:8000). Các service backend khác không cần port ra ngoài.
 > - FE nên chạy ở port 3000, BE (gateway) ở 8000.
 
-### 4. Migrate database cho từng service
+### 4. Kiểm tra hệ thống
 
-Sau khi các container đã chạy, bạn cần migrate database cho từng service:
-
-```bash
-docker-compose exec user-service npx prisma migrate deploy --schema=apps/user-service/prisma/schema.prisma
-docker-compose exec user-service npx prisma generate --schema=apps/user-service/prisma/schema.prisma
-# Lặp lại cho các service khác (lesson-service, progress-service, ...)
-```
-
-### 5. Kiểm tra hệ thống
-
-- Truy cập gateway: http://localhost:8000/api/health
-- Swagger docs: http://localhost:8000/api-docs
-- Kafka UI: http://localhost:8081
-- MongoDB Express: http://localhost:8082
+- **API Gateway**: http://localhost:8000/api/health
+- **Swagger docs**: http://localhost:8000/api-docs
+- **Kafka UI**: http://localhost:8081
+- **MongoDB Express**: http://localhost:8082
 
 ## 🧪 Testing
 
@@ -150,10 +160,19 @@ docker-compose exec user-service npx prisma generate --schema=apps/user-service/
 ```
 puchi-be/
 ├── apps/                    # Microservices (api-gateway, user-service, ...)
+│   ├── api-gateway/         # REST API Gateway
+│   ├── user-service/        # PostgreSQL 17
+│   ├── lesson-service/      # PostgreSQL 17
+│   ├── progress-service/    # PostgreSQL 17
+│   ├── notification-service/# PostgreSQL 17
+│   ├── vocabulary-service/  # PostgreSQL 17
+│   ├── analytics-service/   # MongoDB 8
+│   ├── media-service/       # MongoDB 8
+│   └── quiz-service/        # MongoDB 8
 ├── libs/                    # Shared libraries (auth, utils, database, ...)
 ├── proto/                   # gRPC proto definitions
 ├── scripts/                 # Script build, deploy, test
-├── docker-compose.yaml      # Docker infra (Kafka, PostgreSQL, MongoDB, ...)
+├── docker-compose.yaml      # Docker infra (Kafka, PostgreSQL 17, MongoDB 8, ...)
 └── README.md
 ```
 
@@ -162,7 +181,8 @@ puchi-be/
 - **NestJS**: Framework chính cho cả API Gateway và các service.
 - **gRPC**: Giao tiếp nội bộ giữa các service (proto chuẩn hóa).
 - **Kafka (Bitnami KRaft mode)**: Event bất đồng bộ (notification, logging, ...).
-- **Prisma**: ORM cho cả PostgreSQL và MongoDB, mỗi service một schema riêng.
+- **Prisma**: ORM cho cả PostgreSQL 17 và MongoDB 8, mỗi service một schema riêng.
+- **Polyglot Persistence**: PostgreSQL 17 cho ACID transactions, MongoDB 8 cho flexible schema.
 - **Swagger**: Tự động sinh docs cho REST API tại API Gateway.
 - **Validation, Exception Filter, Response Interceptor**: Chuẩn hóa response, validate input, xử lý lỗi tập trung.
 - **Kubernetes-ready**: Healthcheck, resource limit, configmap, HPA, network policy.
@@ -171,13 +191,8 @@ puchi-be/
 
 - **Build image từng service:**
   ```
-  docker build -t puchi-api-gateway ./apps/api-gateway
-  docker build -t puchi-user-service ./apps/user-service
-  # ...
-  ```
-- **Push image:**
-  ```
-  ./scripts/build-push-all.sh
+  docker-compose build user-service lesson-service
+  docker-compose build analytics-service media-service quiz-service
   ```
 - **Khởi động toàn bộ infra:**
   ```

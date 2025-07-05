@@ -17,6 +17,9 @@ RUN if [ -f apps/vocabulary-service/.env ]; then cp apps/vocabulary-service/.env
 # Cài dependencies
 RUN npm install
 
+# Generate Prisma client
+RUN npx prisma generate --schema=apps/vocabulary-service/prisma/schema.prisma
+
 # Build chỉ project vocabulary-service
 RUN npx nx build vocabulary-service
 
@@ -29,6 +32,9 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Copy dist của vocabulary-service từ builder
 COPY --from=builder /app/dist/apps/vocabulary-service ./dist
+
+# Copy Prisma client từ builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy file proto nếu cần
 COPY --from=builder /app/proto /proto

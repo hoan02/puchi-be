@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from '@libs/database';
+import { DatabaseModule } from '@puchi-be/database';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -9,7 +9,7 @@ import { AppService } from './app.service';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    PrismaModule,
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

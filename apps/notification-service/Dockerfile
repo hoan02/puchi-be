@@ -17,6 +17,9 @@ RUN if [ -f apps/notification-service/.env ]; then cp apps/notification-service/
 # Cài dependencies
 RUN npm install
 
+# Generate Prisma client
+RUN npx prisma generate --schema=apps/notification-service/prisma/schema.prisma
+
 # Build chỉ project notification-service
 RUN npx nx build notification-service
 
@@ -29,6 +32,9 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Copy dist của notification-service từ builder
 COPY --from=builder /app/dist/apps/notification-service ./dist
+
+# Copy Prisma client từ builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy file proto nếu cần
 COPY --from=builder /app/proto /proto

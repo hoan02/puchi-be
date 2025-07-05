@@ -17,6 +17,9 @@ RUN if [ -f apps/quiz-service/.env ]; then cp apps/quiz-service/.env ./.env; els
 # Cài dependencies
 RUN npm install
 
+# Generate Prisma client
+RUN npx prisma generate --schema=apps/quiz-service/prisma/schema.prisma
+
 # Build chỉ project quiz-service
 RUN npx nx build quiz-service
 
@@ -29,6 +32,9 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Copy dist của quiz-service từ builder
 COPY --from=builder /app/dist/apps/quiz-service ./dist
+
+# Copy Prisma client từ builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy file proto nếu cần
 COPY --from=builder /app/proto /proto

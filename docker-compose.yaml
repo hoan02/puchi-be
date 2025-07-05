@@ -18,7 +18,7 @@ services:
       # Listener configuration
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
       KAFKA_CFG_LISTENERS: 'PLAINTEXT://:9092,CONTROLLER://:9093'
-      KAFKA_CFG_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+      KAFKA_CFG_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
 
       # Development settings
@@ -39,10 +39,7 @@ services:
       - kafka_data:/bitnami/kafka
     healthcheck:
       test:
-        [
-          'CMD-SHELL',
-          'kafka-topics.sh --bootstrap-server localhost:9092 --list',
-        ]
+        ['CMD-SHELL', 'kafka-topics.sh --bootstrap-server kafka:9092 --list']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -176,8 +173,8 @@ services:
 
   api-gateway:
     build:
-      context: apps/api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api-gateway/Dockerfile
     container_name: api-gateway
     depends_on:
       - user-service
@@ -206,8 +203,8 @@ services:
   # PostgreSQL Services
   user-service:
     build:
-      context: apps/user-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/user-service/Dockerfile
     container_name: user-service
     depends_on:
       - user-db
@@ -218,8 +215,8 @@ services:
 
   lesson-service:
     build:
-      context: apps/lesson-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/lesson-service/Dockerfile
     container_name: lesson-service
     depends_on:
       - lesson-db
@@ -230,8 +227,8 @@ services:
 
   progress-service:
     build:
-      context: apps/progress-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/progress-service/Dockerfile
     container_name: progress-service
     depends_on:
       - progress-db
@@ -242,8 +239,8 @@ services:
 
   notification-service:
     build:
-      context: apps/notification-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/notification-service/Dockerfile
     container_name: notification-service
     depends_on:
       - notification-db
@@ -254,8 +251,8 @@ services:
 
   vocabulary-service:
     build:
-      context: apps/vocabulary-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/vocabulary-service/Dockerfile
     container_name: vocabulary-service
     depends_on:
       - vocabulary-db
@@ -267,8 +264,8 @@ services:
   # MongoDB Services
   analytics-service:
     build:
-      context: apps/analytics-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/analytics-service/Dockerfile
     container_name: analytics-service
     depends_on:
       - analytics-db
@@ -279,8 +276,8 @@ services:
 
   media-service:
     build:
-      context: apps/media-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/media-service/Dockerfile
     container_name: media-service
     depends_on:
       - media-db
@@ -291,8 +288,8 @@ services:
 
   quiz-service:
     build:
-      context: apps/quiz-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/quiz-service/Dockerfile
     container_name: quiz-service
     depends_on:
       - quiz-db

@@ -4,14 +4,22 @@ import { DatabaseModule } from '@puchi-be/database';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ClientsModule } from '@nestjs/microservices';
-import { LESSON_CLIENT_KAFKA_MODULE } from '@puchi-be/shared';
+import {
+  LESSON_CLIENT_KAFKA_MODULE,
+  USER_CLIENT_KAFKA_MODULE,
+  PROGRESS_CLIENT_KAFKA_MODULE
+} from '@puchi-be/shared';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    ClientsModule.register([LESSON_CLIENT_KAFKA_MODULE]),
+    ClientsModule.register([
+      LESSON_CLIENT_KAFKA_MODULE,
+      USER_CLIENT_KAFKA_MODULE,
+      PROGRESS_CLIENT_KAFKA_MODULE
+    ]),
     DatabaseModule,
   ],
   controllers: [AppController],
