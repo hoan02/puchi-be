@@ -1,0 +1,119 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authelia
+  namespace: puchi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authelia
+  template:
+    metadata:
+      labels:
+        app: authelia
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: authelia
+          image: authelia/authelia:latest
+          ports:
+            - containerPort: 9091
+          envFrom:
+            - secretRef:
+                name: authelia-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /config
+            - name: config
+              mountPath: /config/configuration.yml
+              subPath: configuration.yml
+            - name: users
+              mountPath: /config/users_database.yml
+              subPath: users_database.yml
+      volumes:
+        - name: config
+          configMap:
+            name: authelia-config
+        - name: users
+          configMap:
+            name: authelia-users
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authelia
+  namespace: puchi
+spec:
+  type: ClusterIP
+  selector:
+    app: authelia
+  ports:
+    - port: 9091
+      targetPort: 9091
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authelia-config
+  namespace: puchi
+data:
+  configuration.yml: |
+    server:
+      address: tcp://0.0.0.0:9091
+
+    log:
+      level: info
+
+    authentication_backend:
+      file:
+        path: /config/users_database.yml
+
+    access_control:
+      default_policy: deny
+      rules:
+        - domain: "*.puchi.io.vn"
+          policy: one_factor
+
+    session:
+      secret: "{{ env:SESSION_SECRET }}"
+      cookies:
+        - name: authelia_session
+          domain: puchi.io.vn
+          authelia_url: https://auth.puchi.io.vn
+          expiration: 1h
+          inactivity: 5m
+
+    storage:
+      local:
+        path: /config/db.sqlite3
+      encryption_key: "{{ env:ENCRYPTION_KEY }}"
+
+    notifier:
+      filesystem:
+        filename: /config/notification.txt
+
+    identity_validation:
+      reset_password:
+        jwt_secret: "{{ env:JWT_SECRET }}"
+
+    ntp:
+      disable_startup_check: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authelia-users
+  namespace: puchi
+data:
+  users_database.yml: |
+    users:
+      admin:
+        password: "$argon2id$v=19$m=65536,t=3,p=2$ZHVtbXlTYWx0$wK1Qw1Qw1Qw1Qw1Qw1Qw1Q"
+        displayname: "Admin"
+        email: admin@puchi.io.vn
+        groups:
+          - admins

@@ -1,11 +1,6 @@
 import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
-import {
-  ClerkAuthGuard,
-  CurrentUser,
-  UserAuthPayload,
-  Public,
-} from '@puchi-be/shared';
 import { ClientGrpc } from '@nestjs/microservices';
+import { AutheliaAuthGuard, CurrentUser, UserAuthPayload, Public } from '@puchi-be/shared';
 
 interface ProgressServiceGrpc {
   getUserProgress(data: { userId: string }): Promise<any>;
@@ -22,17 +17,15 @@ export class ProgressController {
   }
 
   @Get('user-progress')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(AutheliaAuthGuard)
   async getUserProgress(@CurrentUser() user: UserAuthPayload) {
     const progress = await this.progressServiceGrpc.getUserProgress({ userId: user.id });
     return {
       data: progress,
-      timestamp: new Date().toISOString()
     };
   }
 
   @Get('public-stats')
-  @Public()
   async getPublicStats() {
     return {
       message: 'Public progress statistics',

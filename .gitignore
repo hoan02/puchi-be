@@ -48,4 +48,4 @@ Thumbs.db
 .env.test
 .env.*
 
-scripts
+# k8s/secrets.yaml

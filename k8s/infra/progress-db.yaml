@@ -1,0 +1,61 @@
+---
+# Progress Service Database
+apiVersion: v1
+kind: Service
+metadata:
+  name: progress-db
+  namespace: puchi
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: progress-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: progress-db
+  namespace: puchi
+spec:
+  serviceName: progress-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: progress-db
+  template:
+    metadata:
+      labels:
+        app: progress-db
+    spec:
+      containers:
+        - name: progress-db
+          image: postgres:17
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: puchi_progress_db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+          volumeMounts:
+            - name: progress-db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: progress-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
+        resources:
+          requests:
+            storage: 1Gi

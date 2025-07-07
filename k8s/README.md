@@ -1,179 +1,154 @@
-# Kubernetes Configuration cho Puchi Backend
+# Hệ thống Kubernetes cho Puchi Backend
 
-Thư mục này chứa các file cấu hình Kubernetes để deploy hệ thống Puchi Backend.
+## 1. Kiến trúc tổng quan
 
-## Cấu trúc Files
+Hệ thống sử dụng mô hình **microservices** với các thành phần chính:
 
-### Core Infrastructure
+- **Cloudflared**: Tunnel bảo mật từ Internet vào cluster nội bộ.
+- **Traefik**: Ingress Controller, route request đến đúng service.
+- **Authelia**: Xác thực Single Sign-On, quản lý session/cookie.
+- **API Gateway**: Nhận HTTP từ frontend, chuyển thành gRPC cho backend.
+- **Các Microservice**: user, lesson, progress, notification, media, quiz, vocabulary, analytics (gRPC, mỗi service 1 DB riêng).
+- **Kafka**: Message queue cho event-driven (sẵn sàng mở rộng).
+- **Mongo Express, Kafka UI**: UI quản trị nội bộ.
 
-- `puchi-infra.yaml` - Infrastructure components (Kafka KRaft mode, PostgreSQL 17, MongoDB 8)
-- `storage.yaml` - StorageClass và PersistentVolume definitions
-- `secrets.yaml` - Kubernetes Secrets cho passwords và sensitive data
+### Sơ đồ kiến trúc
 
-### Application Services
-
-- `puchi-services.yaml` - Tất cả microservices và API Gateway
-- `ingress.yaml` - Ingress configuration để expose API Gateway, Kafka UI, MongoDB Express
-
-### Organization
-
-- `namespace.yaml` - Namespace definitions cho các môi trường khác nhau
-
-## Deployment Order
-
-1. **Namespace** (nếu cần):
-
-   ```bash
-   kubectl apply -f namespace.yaml
-   ```
-
-2. **Storage**:
-
-   ```bash
-   kubectl apply -f storage.yaml
-   ```
-
-3. **Secrets**:
-
-   ```bash
-   kubectl apply -f secrets.yaml
-   ```
-
-4. **Infrastructure**:
-
-   ```bash
-   kubectl apply -f puchi-infra.yaml
-   ```
-
-5. **Services**:
-
-   ```bash
-   kubectl apply -f puchi-services.yaml
-   ```
-
-6. **Ingress** (tùy chọn):
-   ```bash
-   kubectl apply -f ingress.yaml
-   ```
-
-## Cải thiện đã thực hiện
-
-### ✅ Bảo mật
-
-- Sử dụng Kubernetes Secrets thay vì hardcode passwords
-- Tách biệt sensitive data ra file riêng
-- MongoDB secret cho MongoDB services
-
-### ✅ Resource Management
-
-- Thêm resource limits cho tất cả services
-- CPU: 100m-500m, Memory: 128Mi-512Mi
-
-### ✅ Health Checks
-
-- Thêm readiness và liveness probes cho tất cả services
-- Health check endpoint: `/health`
-
-### ✅ Image Management
-
-- Sử dụng specific image tags thay vì `latest`
-- Format: `hoanit/service-name:v1.0.0`
-
-### ✅ Storage
-
-- Tạo StorageClass và PersistentVolume
-- Sử dụng hostPath cho development (có thể thay đổi cho production)
-
-### ✅ Networking
-
-- Thêm Ingress để expose API Gateway
-- CORS configuration
-- LoadBalancer service option
-
-## Environment Variables
-
-### Database Connections (Polyglot Persistence)
-
-#### PostgreSQL 17 Services
-
-- `user-db`: PostgreSQL cho User Service (puchi_user_db)
-- `lesson-db`: PostgreSQL cho Lesson Service (puchi_lesson_db)
-- `progress-db`: PostgreSQL cho Progress Service (puchi_progress_db)
-- `notification-db`: PostgreSQL cho Notification Service (puchi_notification_db)
-- `vocabulary-db`: PostgreSQL cho Vocabulary Service (puchi_vocabulary_db)
-
-#### MongoDB 8 Services
-
-- `analytics-db`: MongoDB cho Analytics Service (puchi_analytics_db)
-- `media-db`: MongoDB cho Media Service (puchi_media_db)
-- `quiz-db`: MongoDB cho Quiz Service (puchi_quiz_db)
-
-### Kafka Configuration
-
-- Broker: `kafka:29092` (Bitnami Kafka với KRaft mode)
-- No Zookeeper required (KRaft mode)
-
-### gRPC Services
-
-- User Service: `user-service:50051`
-- Lesson Service: `lesson-service:50052`
-- Progress Service: `progress-service:50053`
-- Notification Service: `notification-service:50054`
-- Media Service: `media-service:50055`
-- Quiz Service: `quiz-service:50056`
-- Vocabulary Service: `vocabulary-service:50057`
-- Analytics Service: `analytics-service:50058`
-
-## Monitoring
-
-### Health Check Endpoints
-
-- API Gateway: `http://api-gateway:8000/api/health`
-- User Service: `http://user-service:8001/health`
-- Lesson Service: `http://lesson-service:8002/health`
-- Progress Service: `http://progress-service:8003/health`
-- Media Service: `http://media-service:8004/health`
-- Notification Service: `http://notification-service:8005/health`
-- Vocabulary Service: `http://vocabulary-service:8006/health`
-- Quiz Service: `http://quiz-service:8007/health`
-- Analytics Service: `http://analytics-service:8008/health`
-
-### Management UIs
-
-- Kafka UI: `http://kafka-ui:8081` (via ingress: `kafka.puchi.local`)
-- MongoDB Express: `http://mongo-express:8082` (via ingress: `mongo.puchi.local`)
-
-## Production Considerations
-
-1. **Storage**: Thay đổi StorageClass từ `hostPath` sang cloud storage (AWS EBS, GCP PD, Azure Disk)
-2. **Secrets**: Sử dụng external secret management (HashiCorp Vault, AWS Secrets Manager)
-3. **Ingress**: Cấu hình SSL/TLS certificates
-4. **Monitoring**: Thêm Prometheus và Grafana
-5. **Logging**: Cấu hình centralized logging (ELK stack, Fluentd)
-6. **Backup**: Cấu hình database backup strategy
-7. **Scaling**: Thêm HorizontalPodAutoscaler cho các services
-
-## Troubleshooting
-
-### Kiểm tra status
-
-```bash
-kubectl get pods
-kubectl get services
-kubectl get pvc
-kubectl get secrets
+```mermaid
+flowchart TD
+    A[User/Browser] -->|HTTPS| B(Cloudflared Tunnel)
+    B --> C(Traefik Ingress)
+    C -->|/authelia| D[Authelia]
+    C -->|/app| E[Frontend (Next.js)]
+    E -->|HTTP| F[API Gateway]
+    F -- gRPC --> G1[User Service]
+    F -- gRPC --> G2[Lesson Service]
+    F -- gRPC --> G3[...Other Services]
+    G1 -- gRPC --> G2
+    G2 -- gRPC --> G3
+    subgraph Kafka
+      KAFKA[(Kafka Cluster)]
+    end
+    G1 -- Pub/Sub --> KAFKA
+    G2 -- Pub/Sub --> KAFKA
+    D -- Session/Cookie --> E
 ```
 
-### Logs
+## 2. Luồng hoạt động
+
+1. **User** truy cập domain → Cloudflared tunnel → Traefik Ingress.
+2. **Traefik** route request: nếu cần xác thực → Authelia; nếu không → frontend hoặc API Gateway.
+3. **Authelia** xác thực, cấp session/cookie.
+4. **Frontend** nhận session, gửi API HTTP đến API Gateway.
+5. **API Gateway** chuyển HTTP thành gRPC, gọi các microservice backend.
+6. **Các microservice** xử lý logic, truy cập DB riêng, có thể gọi nhau qua gRPC hoặc publish event lên Kafka.
+
+## 3. Hướng dẫn triển khai
+
+### 3.1. Khởi tạo Infra, Storage, DB, Kafka, Config
 
 ```bash
-kubectl logs -f deployment/api-gateway
-kubectl logs -f deployment/user-service
+npm run k8s:infra:up
 ```
 
-### Describe resources
+### 3.2. Deploy Secrets cho App
 
 ```bash
-kubectl describe pod <pod-name>
-kubectl describe service <service-name>
+npm run k8s:secrets:up
 ```
+
+### 3.3. Deploy các Service của App (Deployment, Service cho từng microservice, API Gateway)
+
+```bash
+npm run k8s:services:up
+```
+
+### 3.4. Deploy Middleware (Authelia, Traefik, Cloudflared...)
+
+```bash
+npm run k8s:middleware:up
+```
+
+### 3.5. Deploy UI quản trị (Kafka UI, Mongo Express...)
+
+```bash
+npm run k8s:ui:up
+```
+
+### 3.6. Deploy Ingress
+
+```bash
+npm run k8s:ingress:up
+```
+
+### 3.7. Kiểm tra trạng thái hệ thống
+
+```bash
+npm run k8s:infra:status
+```
+
+### 3.8. Xem log từng thành phần
+
+```bash
+kubectl logs -f deployment/<service-name> -n puchi
+```
+
+---
+
+## 4. Xoá toàn bộ hệ thống (theo thứ tự ngược lại)
+
+```bash
+npm run k8s:ui:down
+npm run k8s:middleware:down
+npm run k8s:services:down
+npm run k8s:secrets:down
+npm run k8s:ingress:down
+npm run k8s:infra:down
+```
+
+---
+
+## 5. Lưu ý
+
+- **Build & push image Docker** cho từng service lên registry trước khi apply manifest K8s.
+- **ConfigMap/Secret**: Quản lý tập trung, có thể tách riêng cho từng môi trường.
+- **CI/CD**: Tích hợp các lệnh npm script vào pipeline để tự động hoá deploy.
+- **Bảo mật**: Không commit secret thật lên repo, chỉ dùng file example hoặc quản lý secret qua vault/ci.
+- **Mở rộng**: Có thể bổ sung thêm microservice, event Kafka, UI quản trị... dễ dàng.
+
+---
+
+**Cấu trúc folder đã chuẩn hoá, dễ maintain, dễ mở rộng cho team và production.**
+
+---
+
+## 6. Tạo StorageClass
+
+### 6.1. Tạo file `puchi-be/k8s/infra/storageclass.yaml`
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: puchi-storage
+provisioner: k8s.io/minikube-hostpath
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+```
+
+### 6.2. Apply StorageClass
+
+```sh
+kubectl apply -f puchi-be/k8s/infra/storageclass.yaml
+```
+
+### 6.3. Kiểm tra lại PVC và pod
+
+Sau khi có StorageClass, các PVC sẽ được provision, pod DB sẽ chuyển sang trạng thái Running.
+
+---
+
+**Tóm lại:**  
+Bạn cần tạo StorageClass `puchi-storage` đúng tên, apply lại, mọi DB sẽ hoạt động bình thường!
+
+Nếu muốn mình tạo file mẫu và bổ sung vào repo, chỉ cần xác nhận nhé!

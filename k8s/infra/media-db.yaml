@@ -1,0 +1,61 @@
+---
+# Media Service Database (MongoDB)
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-db
+  namespace: puchi
+spec:
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: media-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: media-db
+  namespace: puchi
+spec:
+  serviceName: media-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-db
+  template:
+    metadata:
+      labels:
+        app: media-db
+    spec:
+      containers:
+        - name: media-db
+          image: mongo:8.0
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: password
+            - name: MONGO_INITDB_DATABASE
+              value: puchi_media_db
+          volumeMounts:
+            - name: media-db-data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: media-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
+        resources:
+          requests:
+            storage: 1Gi

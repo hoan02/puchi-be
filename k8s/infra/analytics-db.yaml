@@ -1,0 +1,61 @@
+---
+# Analytics Service Database (MongoDB)
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-db
+  namespace: puchi
+spec:
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: analytics-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: analytics-db
+  namespace: puchi
+spec:
+  serviceName: analytics-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-db
+  template:
+    metadata:
+      labels:
+        app: analytics-db
+    spec:
+      containers:
+        - name: analytics-db
+          image: mongo:8.0
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: password
+            - name: MONGO_INITDB_DATABASE
+              value: puchi_analytics_db
+          volumeMounts:
+            - name: analytics-db-data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: analytics-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
+        resources:
+          requests:
+            storage: 1Gi

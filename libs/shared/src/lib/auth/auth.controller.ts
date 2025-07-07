@@ -1,4 +1,3 @@
-import { User } from '@clerk/backend';
 import { Controller, Get } from '@nestjs/common';
 import { CurrentUser } from '../decorators';
 

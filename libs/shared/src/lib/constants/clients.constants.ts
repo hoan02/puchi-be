@@ -1,6 +1,11 @@
 import { KafkaOptions, Transport } from '@nestjs/microservices';
 
-const brokers = (process.env['KAFKA_BROKERS'] || 'kafka:9092').split(',');
+const brokers = (process.env['KAFKA_BROKERS'] || 'localhost:9092').split(',');
+
+// Debug logging
+console.log('🔍 Kafka Debug:');
+console.log('  KAFKA_BROKERS env:', process.env['KAFKA_BROKERS']);
+console.log('  Final brokers:', brokers);
 
 export const CLIENT_KAFKA_NAMES = {
   API_GATEWAY_CLIENT: 'API_GATEWAY_CLIENT',

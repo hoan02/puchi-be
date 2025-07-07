@@ -1,5 +1,5 @@
 import { Controller, Get, Inject, UseGuards, OnModuleInit } from '@nestjs/common';
-import { ClerkAuthGuard, CurrentUser, UserAuthPayload, Public } from '@puchi-be/shared';
+import { AutheliaAuthGuard, CurrentUser, Public, UserAuthPayload } from '@puchi-be/shared';
 import { ApiResponseDto } from '../dto/lesson.dto';
 import { ClientGrpc } from '@nestjs/microservices';
 import { GrpcMethod } from '@nestjs/microservices';
@@ -24,12 +24,11 @@ export class UsersController implements OnModuleInit {
   }
 
   @Get('profile')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(AutheliaAuthGuard)
   async getProfile(@CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<any>> {
     const profile = await firstValueFrom(this.userServiceGrpc.getUserProfile({ userId: user.id }));
     return {
       data: profile,
-      timestamp: new Date().toISOString()
     };
   }
 

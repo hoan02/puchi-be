@@ -112,7 +112,15 @@ npm install
 
 ### 2. Cấu hình biến môi trường
 
-- Mỗi service có file `env.example` riêng trong thư mục của mình. Copy thành `.env` và chỉnh sửa thông tin kết nối DB, Kafka, gRPC endpoint cho từng service.
+```bash
+# Copy file env.example thành .env
+cp env.example .env
+
+# Chỉnh sửa file .env với các giá trị thực tế
+# - POSTGRES_PASSWORD: Mật khẩu cho PostgreSQL
+# - MONGO_ROOT_PASSWORD: Mật khẩu cho MongoDB
+# - TUNNEL_TOKEN: Token cho Cloudflare Tunnel (nếu sử dụng)
+```
 
 ### 3. Khởi động Docker (Bitnami Kafka KRaft mode, PostgreSQL 17, MongoDB 8)
 
@@ -140,6 +148,55 @@ docker-compose up -d analytics-service media-service quiz-service
 - **Swagger docs**: http://localhost:8000/api-docs
 - **Kafka UI**: http://localhost:8081
 - **MongoDB Express**: http://localhost:8082
+
+## 🌐 Cloudflare Tunnel (Tùy chọn - cho development/public access)
+
+### 1. Cài đặt Cloudflare Tunnel
+
+```bash
+# Windows (PowerShell)
+winget install Cloudflare.cloudflared
+
+# Hoặc tải từ: https://github.com/cloudflare/cloudflared/releases
+```
+
+### 2. Đăng nhập và tạo tunnel
+
+```bash
+# Đăng nhập Cloudflare
+cloudflared login
+
+# Tạo tunnel mới
+cloudflared tunnel create puchi-dev
+```
+
+### 3. Cấu hình tunnel
+
+1. **Chỉnh sửa file `cloudflared-config.yaml`:**
+   - Thay `your-domain.com` bằng domain thực của bạn
+   - Điều chỉnh các hostname theo ý muốn
+
+2. **Khởi động tunnel:**
+
+   ```bash
+   # Cách 1: Sử dụng PowerShell script
+   .\start-tunnel.ps1
+
+   # Cách 2: Chạy trực tiếp
+   cloudflared tunnel --config cloudflared-config.yaml run puchi-dev
+
+   # Cách 3: Sử dụng Docker
+   docker-compose -f docker-compose.tunnel.yaml up -d
+   ```
+
+### 4. Truy cập qua Cloudflare Tunnel
+
+Sau khi tunnel hoạt động, bạn có thể truy cập:
+
+- **API Gateway**: `https://api.puchi.io.vn`
+- **Kafka UI**: `https://kafka.puchi.io.vn`
+
+> **Lưu ý:** Cloudflare Tunnel cung cấp SSL tự động và bảo mật, phù hợp cho development và demo.
 
 ## 🧪 Testing
 
@@ -201,9 +258,55 @@ puchi-be/
 
 ## 🔒 Security
 
-- **Authentication**: Clerk tích hợp tại API Gateway.
-- **Authorization**: Role-based access control tại API Gateway.
+- **Authentication**: Sử dụng combo Cloudflare Tunnel + Traefik (reverse proxy) + Authelia (SSO, xác thực tập trung).
+  - Cloudflare Tunnel/CDN bảo vệ ngoài cùng, chỉ expose Traefik ra internet.
+  - Traefik làm reverse proxy, forward xác thực tới Authelia qua middleware `forwardAuth`.
+  - Authelia xác thực user, trả về các header (`Remote-User`, `Remote-Email`, `Remote-Groups`, `Remote-Name`).
+  - Backend chỉ tin tưởng các header này khi request đi qua proxy.
+  - Các route public vẫn hoạt động bình thường (dùng @Public()).
+  - Tham khảo tài liệu chính thức: https://www.authelia.com/integration/proxies/traefik/
+- **Authorization**: Role-based access control tại API Gateway (dựa vào trường `groups` do Authelia trả về).
 - **Data Protection**: Validation, encryption, logging.
+
+### Sơ đồ xác thực
+
+```mermaid
+flowchart TD
+    A[Client] --> B(Cloudflare Tunnel/CDN)
+    B --> C(Traefik Proxy)
+    C --> D(Authelia)
+    C --> E(Backend Services)
+    D <--> C
+    E -.->|Tin tưởng header xác thực| C
+```
+
+### Ví dụ cấu hình middleware cho Traefik:
+
+```yaml
+http:
+  middlewares:
+    authelia:
+      forwardAuth:
+        address: 'http://authelia:9091/api/authz/forward-auth'
+        trustForwardHeader: true
+        authResponseHeaders:
+          - 'Remote-User'
+          - 'Remote-Groups'
+          - 'Remote-Email'
+          - 'Remote-Name'
+```
+
+### Backend (NestJS) sẽ:
+
+- Dùng guard AutheliaAuthGuard kiểm tra các header xác thực.
+- Dùng decorator CurrentUser để lấy thông tin user từ request.
+- Không tự verify lại JWT, chỉ tin tưởng header do proxy forward.
+
+### Tham khảo file mẫu:
+
+- `k8s/cloudflared-tunnel.yaml`
+- `k8s/traefik.yaml`
+- `k8s/authelia.yaml`
 
 ## 📚 Tài liệu
 

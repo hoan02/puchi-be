@@ -1,0 +1,61 @@
+---
+# Notification Service Database
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-db
+  namespace: puchi
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: notification-db
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: notification-db
+  namespace: puchi
+spec:
+  serviceName: notification-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-db
+  template:
+    metadata:
+      labels:
+        app: notification-db
+    spec:
+      containers:
+        - name: notification-db
+          image: postgres:17
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: puchi_notification_db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+          volumeMounts:
+            - name: notification-db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: notification-db-data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: puchi-storage
+        resources:
+          requests:
+            storage: 1Gi

@@ -1,9 +1,5 @@
 import { Controller, Get, Post, Body, Param, Inject, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
-import {
-  ClerkAuthGuard,
-  CurrentUser,
-  UserAuthPayload,
-} from '@puchi-be/shared';
+import { AutheliaAuthGuard, CurrentUser, UserAuthPayload, Public } from '@puchi-be/shared';
 import { CreateLessonRequestDto, ApiResponseDto, LessonsListResponseDto, LessonResponseDto } from '../dto/lesson.dto';
 import { ClientGrpc } from '@nestjs/microservices';
 
@@ -25,8 +21,8 @@ export class LessonsController {
   }
 
   @Post()
-  @UseGuards(ClerkAuthGuard)
-  async createLesson(@Body() createLessonDto: CreateLessonRequestDto, @CurrentUser() user: any): Promise<ApiResponseDto<any>> {
+  @UseGuards(AutheliaAuthGuard)
+  async createLesson(@Body() createLessonDto: CreateLessonRequestDto, @CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<any>> {
     try {
       const result = await this.lessonServiceGrpc.createLesson({ ...createLessonDto, createdBy: user.id });
       return {
@@ -35,16 +31,12 @@ export class LessonsController {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      return {
-        data: null,
-        message: "Failed to create lesson",
-        timestamp: new Date().toISOString()
-      };
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   @Get('list')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(AutheliaAuthGuard)
   async getLessons(@CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<LessonsListResponseDto>> {
     try {
       const response = await this.lessonServiceGrpc.getLessons({ userId: user.id });
@@ -53,12 +45,12 @@ export class LessonsController {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      throw new HttpException('Failed to fetch lessons', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   @Get(':id')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(AutheliaAuthGuard)
   async getLessonById(@Param('id') id: string, @CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<LessonResponseDto>> {
     try {
       const response = await this.lessonServiceGrpc.getLessonById({ id, userId: user.id });
@@ -67,12 +59,12 @@ export class LessonsController {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      throw new HttpException('Failed to fetch lesson', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   @Get('my-progress')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(AutheliaAuthGuard)
   async getMyProgress(@CurrentUser() user: UserAuthPayload): Promise<ApiResponseDto<any>> {
     try {
       const response = await this.lessonServiceGrpc.getMyProgress({ userId: user.id });
@@ -81,7 +73,7 @@ export class LessonsController {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      throw new HttpException('Failed to fetch progress', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 } 
